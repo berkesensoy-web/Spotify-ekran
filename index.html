@@ -64,7 +64,7 @@ section{height:100%}
   box-shadow:0 3vh 8vh rgba(0,0,0,.55);
 }
 .art-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .5s ease}
-.info{flex:1;min-width:0;display:flex;flex-direction:column;transition:opacity .35s ease}
+.info{flex:1;min-width:0;display:flex;flex-direction:column;transition:opacity .35s ease;container-type:inline-size}
 .info.swap{opacity:0}
 .device{font-size:clamp(12px,3.4vh,15px);color:var(--fg3);margin-bottom:1.6vh;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
@@ -109,8 +109,10 @@ section{height:100%}
 .info.has-shelf #title{font-size:clamp(20px,7vh,40px)}
 .info.has-shelf .progress{margin-top:3vh}
 .info.has-shelf .controls{margin-top:1.5vh}
-.shelf{--tile:clamp(34px,10.5vh,54px);--gap:clamp(5px,1.5vh,8px);
-  display:grid;grid-template-columns:repeat(4,var(--tile));gap:var(--gap);
+.shelf{--gap:clamp(5px,1.6vh,9px);
+  /* 5 sütun: genişliği doldur ama iki sıra yüksekliğe sığsın */
+  --tile:min(calc((100cqw - 4 * var(--gap)) / 5), 15vh);
+  display:grid;grid-template-columns:repeat(5,var(--tile));gap:var(--gap);
   max-height:calc(var(--tile) * 2 + var(--gap) + 6px);overflow-y:auto;scrollbar-width:none;
   -webkit-overflow-scrolling:touch;padding:3px;margin:-3px}
 .shelf::-webkit-scrollbar{display:none}
@@ -121,10 +123,13 @@ section{height:100%}
   transition:transform .12s ease,background .3s ease}
 .mix:active{transform:scale(.9)}
 .mix span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:6%;
-  text-align:center;color:var(--fg2);font-size:clamp(12px,3.7vh,17px);font-weight:500;letter-spacing:.03em;
+  text-align:center;color:var(--fg2);font-size:max(12px,calc(var(--tile) * .3));font-weight:500;letter-spacing:.03em;
   line-height:1.05;font-variant-numeric:tabular-nums;overflow:hidden;word-break:break-word;transition:color .3s ease}
 .mix.on{background:rgba(255,255,255,.9);box-shadow:none}
 .mix.on span{color:#000;font-weight:600}
+.info.has-next .shelf{--tile:min(calc((100cqw - 4 * var(--gap)) / 5), 11vh)}
+.mix.rnd svg{width:50%;height:50%;fill:none;stroke:var(--fg2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s}
+.mix.rnd span{padding:0}
 #art:not([src]),#art[src=""]{visibility:hidden}
 .mix.add{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;
   box-shadow:inset 0 0 0 1.5px var(--fg3)}
@@ -243,7 +248,7 @@ section{height:100%}
   #play svg{width:clamp(34px,5vh,50px)}
   .info.has-shelf{height:auto}
   .info.has-shelf .meta{margin-top:2vh}
-  .shelf{--tile:clamp(38px,6.5vh,58px)}
+  .shelf,.info.has-next .shelf{--tile:min(calc((100cqw - 4 * var(--gap)) / 5), 8vh)}
   #idle[data-face="analog"] .f-analog{flex-direction:column;gap:4vh}
   .dial{height:auto;width:min(80vw,50vh)}
   .adate{text-align:center}
@@ -740,6 +745,13 @@ function renderShelf(){
     b.addEventListener('click', function(){ playMix(m); });
     shelf.appendChild(b);
   });
+  if (mixes.length >= 2) {
+    var rnd = document.createElement('button');
+    rnd.className = 'mix rnd'; rnd.setAttribute('aria-label', 'Rastgele bir mix çal');
+    rnd.innerHTML = '<span><svg viewBox="0 0 24 24"><path d="M3 7h3.5c2 0 3.2 1 4.3 2.6l2.4 4.8c1.1 1.6 2.3 2.6 4.3 2.6H21"/><path d="M3 17h3.5c1.4 0 2.4-.5 3.3-1.4"/><path d="M14.2 8.4c.9-.9 1.9-1.4 3.3-1.4H21"/><path d="M18.5 4.5 21 7l-2.5 2.5"/><path d="M18.5 14.5 21 17l-2.5 2.5"/></svg></span>';
+    rnd.addEventListener('click', playRandomMix);
+    shelf.appendChild(rnd);
+  }
   if (mixes.length) { markActiveMix(); return; }
   var add = document.createElement('button');
   add.className = 'mix add'; add.setAttribute('aria-label', 'Mix ekle');
@@ -760,11 +772,32 @@ function playMix(m){
     return;
   }
   S.context = uri; markActiveMix();
-  toast(m.name + ' başlıyor');
-  var q = S.deviceId ? '?device_id=' + encodeURIComponent(S.deviceId) : '';
+  toast(m.name + ' karışık başlıyor');
+  var dev = S.deviceId ? 'device_id=' + encodeURIComponent(S.deviceId) : '';
+  var playPath = '/me/player/play' + (dev ? '?' + dev : '');
   S.lockUntil = 0;
-  // Mix her zaman ilk şarkısının başından başlar
-  control('PUT', '/me/player/play' + q, JSON.stringify({ context_uri: uri, offset: { position: 0 }, position_ms: 0 }));
+  // Karışık çalmayı aç, sonra listeyi rastgele bir şarkıdan, o şarkının başından başlat
+  api('/me/player/shuffle?state=true' + (dev ? '&' + dev : ''), { method:'PUT' }).catch(function(){}).then(function(){
+    var off = Math.floor(Math.random() * 20);
+    return api(playPath, { method:'PUT', body:JSON.stringify({ context_uri: uri, offset: { position: off }, position_ms: 0 }) });
+  }).then(function(r){
+    // Liste beklenenden kısaysa rastgele sıra geçersiz olabilir: karışık modda baştan dene
+    if (r && !r.ok && r.status !== 403 && r.status !== 429) {
+      return api(playPath, { method:'PUT', body:JSON.stringify({ context_uri: uri }) });
+    }
+    return r;
+  }).then(function(r){
+    if (!r) return;
+    if (r.status === 403) toast('Çalmayı kontrol etmek için Spotify Premium gerekiyor.', 'premium');
+    else if (r.status === 404) toast('Aktif bir cihaz yok. Önce Spotify’da bir şey çalmaya başlayın.', 'nodevice');
+  }).catch(function(){}).then(function(){ setTimeout(poll, 600); });
+}
+// Rastgele kare: çalmayan mix'lerden birini seçip karışık başlat
+function playRandomMix(){
+  var pool = mixes.filter(function(m){ return 'spotify:playlist:' + m.id !== S.context; });
+  if (!pool.length) pool = mixes;
+  var m = pool[Math.floor(Math.random() * pool.length)];
+  if (m) playMix(m);
 }
 function setShelf(v){
   shelfOn = v; LS.set('shelf', v ? '1' : '0');

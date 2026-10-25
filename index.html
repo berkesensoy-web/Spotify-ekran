@@ -507,7 +507,7 @@ function api(path, opts){
 }
 
 /* ---------- Durum ---------- */
-var S = { itemId:null, isPlaying:false, progress:0, duration:0, at:0, lockUntil:0, deviceId:'', context:'', img:'' };
+var S = { itemId:null, isPlaying:false, progress:0, duration:0, at:0, lockUntil:0, deviceId:'', context:'', img:'', trackUri:'' };
 function nowProgress(){
   var p = S.isPlaying ? S.progress + (performance.now() - S.at) : S.progress;
   return Math.max(0, Math.min(p, S.duration || 0));
@@ -618,6 +618,8 @@ function applyState(j){
   if (j.device && j.device.id) S.deviceId = j.device.id;
   var ctx = j.context && j.context.uri ? j.context.uri : '';
   if (ctx !== S.context) { S.context = ctx; markActiveMix(); }
+  S.trackUri = it.uri || '';
+  if (performance.now() > S.lockUntil) saveMixPos(S.context, S.trackUri, S.progress);
   if (clockMode) { $('idleHint').textContent = 'Müziğe dönmek için saate dokunun.'; show('idle'); }
   else show('player');
   maybeQueue(changed);
@@ -750,13 +752,46 @@ function markActiveMix(){
   var tiles = $('shelf').querySelectorAll('.mix[data-uri]');
   for (var i = 0; i < tiles.length; i++) tiles[i].classList.toggle('on', tiles[i].getAttribute('data-uri') === S.context);
 }
+/* Her mix'te en son hangi şarkıda ve saniyede kalındığını hatırla */
+function loadMixPos(){ try { return JSON.parse(LS.get('mixpos') || '{}') || {}; } catch(e){ return {}; } }
+function saveMixPos(ctx, track, pos){
+  if (!ctx || !track || ctx.indexOf('spotify:playlist:') !== 0) return;
+  var id = ctx.split(':')[2];
+  if (!mixes.some(function(m){ return m.id === id; })) return;
+  var all = loadMixPos();
+  all[id] = { track:track, pos:Math.max(0, Math.round(pos)), t:Date.now() };
+  LS.set('mixpos', JSON.stringify(all));
+}
 function playMix(m){
   var uri = 'spotify:playlist:' + m.id;
+  // Zaten bu mix'teyiz: baştan başlatma, duraklatılmışsa devam ettir
+  if (S.context === uri) {
+    if (!S.isPlaying) $('play').click(); else toast(m.name + ' zaten çalıyor');
+    return;
+  }
+  // Ayrılmadan önce şu anki mix'in yerini kaydet
+  saveMixPos(S.context, S.trackUri, nowProgress());
   S.context = uri; markActiveMix();
-  toast(m.name + ' başlıyor');
   var q = S.deviceId ? '?device_id=' + encodeURIComponent(S.deviceId) : '';
+  var saved = loadMixPos()[m.id];
+  var body = { context_uri: uri };
+  // Daily Mix her gün yenilenir; bir günden eski kayıtta şarkı listeden çıkmış olabilir
+  var fresh = saved && saved.track && Date.now() - (saved.t || 0) < 36 * 3600 * 1000;
+  if (fresh) { body.offset = { uri: saved.track }; body.position_ms = saved.pos || 0; }
+  toast(m.name + (fresh ? ' kaldığı yerden devam ediyor' : ' başlıyor'));
   S.lockUntil = 0;
-  control('PUT', '/me/player/play' + q, JSON.stringify({ context_uri: uri }));
+  var path = '/me/player/play' + q;
+  api(path, { method:'PUT', body:JSON.stringify(body) }).then(function(r){
+    // Kayıtlı şarkı artık listede yoksa mix'i baştan başlat
+    if (!r.ok && fresh && r.status !== 403 && r.status !== 429) {
+      return api(path, { method:'PUT', body:JSON.stringify({ context_uri: uri }) });
+    }
+    return r;
+  }).then(function(r){
+    if (!r) return;
+    if (r.status === 403) toast('Çalmayı kontrol etmek için Spotify Premium gerekiyor.', 'premium');
+    else if (r.status === 404) toast('Aktif bir cihaz yok. Önce Spotify’da bir şey çalmaya başlayın.', 'nodevice');
+  }).catch(function(){}).then(function(){ setTimeout(poll, 600); });
 }
 function setShelf(v){
   shelfOn = v; LS.set('shelf', v ? '1' : '0');

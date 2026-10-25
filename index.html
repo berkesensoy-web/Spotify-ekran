@@ -872,22 +872,36 @@ function playMix(m){
   var dev = S.deviceId ? '?device_id=' + encodeURIComponent(S.deviceId) : '';
   var playPath = '/me/player/play' + dev;
   S.lockUntil = 0;
-  // Karıştırma ayarına dokunmadan listeyi rastgele bir şarkıdan, şarkının başından başlat
-  var start = function(maxOff){
+  // Listenin tamamından rastgele bir şarkı seç. Spotify Daily Mix ve radyo listelerinin
+  // uzunluğunu vermediği için her mix'in uzunluğunu denedikçe öğreniyoruz:
+  // u = bu sıra numarası ve üstü geçersiz çıktı, l = bu sıraya kadar çalabildik.
+  var all = loadBounds(), b = all[m.id] || { u: 100, l: 0 }, tries = 0;
+  var save = function(){ all[m.id] = b; LS.set('mixbounds', JSON.stringify(all)); };
+  var attempt = function(){
+    tries++;
+    // Son birkaç şarkıdan başlamasın ki liste hemen bitmesin
+    var range = Math.max(1, b.u - (b.u > 16 ? 8 : 0));
+    var off = tries > 5 ? 0 : Math.floor(Math.random() * range);
     var body = { context_uri: uri, position_ms: 0 };
-    if (maxOff) body.offset = { position: Math.floor(Math.random() * maxOff) };
-    return api(playPath, { method:'PUT', body:JSON.stringify(body) });
+    if (off) body.offset = { position: off };
+    return api(playPath, { method:'PUT', body:JSON.stringify(body) }).then(function(r){
+      if (r.ok) { if (off + 1 > b.l) { b.l = off + 1; save(); } return r; }
+      if (r.status === 403 || r.status === 429 || !off) return r;
+      return r.clone().json().catch(function(){ return {}; }).then(function(j){
+        if (j && j.error && j.error.reason === 'NO_ACTIVE_DEVICE') return r;
+        // Bu sıra listede yok: üst sınırı daralt ve yeniden dene
+        b.u = Math.max(b.l, off, 1); save();
+        return attempt();
+      });
+    });
   };
-  var retry = function(r){ return r && !r.ok && r.status !== 403 && r.status !== 429; };
-  start(20).then(function(r){
-    // Liste kısaysa önce daha dar bir aralık, olmazsa ilk şarkı
-    return retry(r) ? start(5).then(function(r2){ return retry(r2) ? start(0) : r2; }) : r;
-  }).then(function(r){
+  attempt().then(function(r){
     if (!r) return;
     if (r.status === 403) toast('Çalmayı kontrol etmek için Spotify Premium gerekiyor.', 'premium');
     else if (r.status === 404) toast('Aktif bir cihaz yok. Önce Spotify’da bir şey çalmaya başlayın.', 'nodevice');
   }).catch(function(){}).then(function(){ setTimeout(poll, 600); });
 }
+function loadBounds(){ try { return JSON.parse(LS.get('mixbounds') || '{}') || {}; } catch(e){ return {}; } }
 function setShelf(v){
   shelfOn = v; LS.set('shelf', v ? '1' : '0');
   $('mShelf').textContent = 'Mix rafı: ' + (v ? 'Açık' : 'Kapalı');

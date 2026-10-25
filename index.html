@@ -92,11 +92,56 @@ section{height:100%}
 #play svg{width:clamp(34px,11vh,56px);height:auto}
 .controls button:focus-visible,.menu-panel button:focus-visible,.setup button:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
 
-/* Boşta: büyük saat */
-#idle{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+/* Sıradaki şarkı */
+.upnext{display:flex;align-items:center;gap:1.4vh;margin-bottom:2vh;min-width:0;
+  font-size:clamp(12px,3.4vh,15px);color:var(--fg2);font-weight:500}
+.upnext img{width:clamp(22px,7vh,34px);height:clamp(22px,7vh,34px);border-radius:5px;object-fit:cover;flex:none;background:var(--glass)}
+.upnext span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upnext b{color:var(--fg3);font-weight:600;margin-right:.35em}
+
+/* Boşta: saat yüzleri */
+#idle{position:relative;cursor:pointer}
+.face{display:none;height:100%;align-items:center;justify-content:center;text-align:center}
+#idle[data-face="sade"] .f-sade,#idle[data-face="gece"] .f-sade{display:flex;flex-direction:column}
+#idle[data-face="kalin"] .f-kalin{display:flex}
+#idle[data-face="analog"] .f-analog{display:flex;gap:7vw}
+#idle[data-face="kelime"] .f-kelime{display:flex;justify-content:flex-start;text-align:left}
+
 .clock{font-size:min(38vh,24vw);font-weight:300;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
 .date{font-size:clamp(15px,5vh,26px);color:var(--fg2);margin-top:2vh;font-weight:500}
 .idle-hint{font-size:clamp(12px,3.4vh,15px);color:var(--fg3);margin-top:4vh}
+#idle:not([data-face="sade"]) .idle-hint{display:none}
+
+/* Gece: kırmızı ve loş, gözü yormaz */
+#idle[data-face="gece"] .f-sade{color:#ff3b30;opacity:.55}
+#idle[data-face="gece"] .date{color:#ff3b30}
+
+/* Kalın: dev rakamlar */
+.big{display:flex;gap:3vw;font-size:min(66vh,21vw);font-weight:800;line-height:.9;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.big span{background:linear-gradient(170deg,var(--k1),var(--k2));-webkit-background-clip:text;background-clip:text;color:transparent}
+#bigH{--k1:#ffd88a;--k2:#ff6a4d}
+#bigM{--k1:#ffffff;--k2:#9fb4ff}
+
+/* Analog */
+.dial{height:min(86vh,58vw);width:auto;aspect-ratio:1/1;overflow:visible}
+.dial .face-bg{fill:rgba(255,255,255,.045)}
+.dial .tk{stroke:var(--fg3);stroke-width:1;stroke-linecap:round}
+.dial .tk.h{stroke:var(--fg);stroke-width:2.6}
+.dial .num{fill:var(--fg2);font-size:15px;font-weight:600;text-anchor:middle;dominant-baseline:central}
+#hH,#hM{stroke:var(--fg);stroke-linecap:round}
+#hH{stroke-width:6}
+#hM{stroke-width:4}
+#hS{stroke:#ff9f0a;stroke-width:1.6;stroke-linecap:round}
+.dial .pin{fill:#ff9f0a}
+.adate{text-align:left}
+.adate .wd{font-size:clamp(18px,7vh,36px);color:#ff9f0a;font-weight:700}
+.adate .dm{font-size:clamp(24px,13vh,64px);font-weight:700;letter-spacing:-.02em;line-height:1.05;margin-top:.5vh}
+
+/* Kelime */
+.words{display:flex;flex-direction:column;gap:.5vh;font-weight:700;letter-spacing:-.02em;line-height:1.02}
+.words .w0{font-size:clamp(18px,8vh,40px);color:var(--fg3)}
+.words .w1{font-size:min(17vh,9vw);color:var(--fg)}
+.words .w2{font-size:min(17vh,9vw);color:var(--fg2)}
 
 /* Kurulum */
 #setup{overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -132,6 +177,11 @@ section{height:100%}
   border-bottom:1px solid rgba(255,255,255,.08)}
 .menu-panel button:last-child{border-bottom:0;font-weight:600}
 .menu-panel .danger{color:#ff6961}
+.menu-panel{max-height:calc(100vh - var(--sat) - var(--sab) - 24px);overflow-y:auto}
+.menu-panel .mlabel{border-bottom:0;padding-bottom:6px;color:var(--fg3);font-weight:600}
+.menu-panel .seg{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:0 10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.menu-panel .seg button{border:0;padding:9px 0;text-align:center;font-size:13px;font-weight:600;border-radius:9px;background:var(--glass);color:var(--fg2)}
+.menu-panel .seg button[aria-pressed="true"]{background:#fff;color:#000}
 
 #toast{position:fixed;z-index:20;left:50%;bottom:calc(var(--sab) + 18px);transform:translate(-50%,20px);
   max-width:min(520px,90vw);background:rgba(44,44,46,.95);border-radius:14px;padding:11px 16px;
@@ -148,6 +198,11 @@ section{height:100%}
   .controls{margin:1.5vh auto 0;width:100%}
   .skip svg{width:clamp(28px,4vh,40px)}
   #play svg{width:clamp(34px,5vh,50px)}
+  #idle[data-face="analog"] .f-analog{flex-direction:column;gap:4vh}
+  .dial{height:auto;width:min(80vw,50vh)}
+  .adate{text-align:center}
+  .big{flex-direction:column;align-items:center;gap:0;font-size:min(30vh,44vw)}
+  .words .w1,.words .w2{font-size:12vw}
 }
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important}
@@ -179,6 +234,7 @@ section{height:100%}
     <div class="art-wrap"><img id="art" alt=""></div>
     <div class="info" id="info">
       <div class="device" id="device"></div>
+      <div class="upnext" id="upnext" hidden><img id="nextArt" alt=""><span><b>Sıradaki</b><span id="nextText"></span></span></div>
       <h1 id="title"></h1>
       <p id="artist"></p>
       <div class="progress" id="progress" role="slider" aria-label="Şarkıda ilerle">
@@ -199,10 +255,29 @@ section{height:100%}
     </div>
   </section>
 
-  <section id="idle" hidden>
-    <div class="clock" id="clock">--:--</div>
-    <div class="date" id="date"></div>
-    <p class="idle-hint" id="idleHint">Spotify’da bir şey çaldığınızda burada görünecek.</p>
+  <section id="idle" data-face="sade" hidden>
+    <div class="face f-sade">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="date"></div>
+      <p class="idle-hint" id="idleHint">Spotify’da bir şey çaldığınızda burada görünecek.</p>
+    </div>
+    <div class="face f-kalin">
+      <div class="big"><span id="bigH">--</span><span id="bigM">--</span></div>
+    </div>
+    <div class="face f-analog">
+      <svg class="dial" viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="face-bg" cx="100" cy="100" r="98"/>
+        <g id="ticks"></g>
+        <line id="hH" x1="100" y1="100" x2="100" y2="54"/>
+        <line id="hM" x1="100" y1="100" x2="100" y2="22"/>
+        <line id="hS" x1="100" y1="114" x2="100" y2="16"/>
+        <circle class="pin" cx="100" cy="100" r="3.6"/>
+      </svg>
+      <div class="adate"><div class="wd" id="aDay"></div><div class="dm" id="aDate"></div></div>
+    </div>
+    <div class="face f-kelime">
+      <div class="words"><div class="w0">Saat</div><div class="w1" id="w1"></div><div class="w2" id="w2"></div></div>
+    </div>
   </section>
 </main>
 
@@ -212,6 +287,11 @@ section{height:100%}
 <div id="menu" hidden>
   <div class="menu-panel">
     <p id="wakeInfo"></p>
+    <p class="mlabel">Saat stili</p>
+    <div class="seg" id="faceSeg">
+      <button data-face="sade">Sade</button><button data-face="kalin">Kalın</button><button data-face="analog">Analog</button><button data-face="kelime">Kelime</button><button data-face="gece">Gece</button>
+    </div>
+    <button id="mUpnext">Sıradaki şarkıyı göster: Kapalı</button>
     <button id="mRefresh">Yenile</button>
     <button id="mLogout" class="danger">Spotify bağlantısını kes</button>
     <button id="mClose">Kapat</button>
@@ -467,10 +547,46 @@ function applyState(j){
     setPlayIcon();
   }
   var id = it.id || it.uri || it.name;
-  if (S.itemId !== id) { S.itemId = id; setTrack(it.name, artist, img); }
+  var changed = S.itemId !== id;
+  if (changed) { S.itemId = id; setTrack(it.name, artist, img); }
   $('device').textContent = j.device && j.device.name ? j.device.name : '';
   show('player');
+  maybeQueue(changed);
   tick();
+}
+
+/* ---------- Sıradaki şarkı ---------- */
+var showNext = LS.get('upnext') === '1', queueAt = 0;
+function setUpnextVisible(v){
+  $('upnext').hidden = !v;
+  $('device').hidden = v;
+}
+function maybeQueue(force){
+  if (!showNext || view !== 'player') return;
+  if (!force && Date.now() - queueAt < 20000) return;
+  queueAt = Date.now();
+  var forItem = S.itemId;
+  api('/me/player/queue').then(function(r){
+    if (r.status === 403 || r.status === 404) { toast('Spotify sıradaki şarkı bilgisini vermedi.', 'queue'); return null; }
+    return r.ok ? r.json() : null;
+  }).then(function(j){
+    if (forItem !== S.itemId) return;
+    var n = j && j.queue && j.queue[0];
+    if (!n) { setUpnextVisible(false); return; }
+    var ep = n.type === 'episode';
+    var imgs = ep ? ((n.images && n.images.length) ? n.images : ((n.show && n.show.images) || []))
+                  : ((n.album && n.album.images) || []);
+    var small = imgs.length ? imgs[imgs.length - 1].url : '';
+    var who = ep ? ((n.show && n.show.name) || '') : (n.artists || []).map(function(a){ return a.name; }).join(', ');
+    $('nextArt').src = small; $('nextArt').style.visibility = small ? 'visible' : 'hidden';
+    $('nextText').textContent = n.name + (who ? ' – ' + who : '');
+    setUpnextVisible(true);
+  }).catch(function(){});
+}
+function setShowNext(v){
+  showNext = v; LS.set('upnext', v ? '1' : '0');
+  $('mUpnext').textContent = 'Sıradaki şarkıyı göster: ' + (v ? 'Açık' : 'Kapalı');
+  if (v) maybeQueue(true); else setUpnextVisible(false);
 }
 function showIdle(hint){
   S.itemId = null;
@@ -546,11 +662,78 @@ document.addEventListener('click', keepAwake);
 document.addEventListener('touchend', keepAwake, { passive:true });
 
 /* ---------- Saat ---------- */
+var FACES = [['sade','Sade'],['kalin','Kalın'],['analog','Analog'],['kelime','Kelime'],['gece','Gece']];
+var face = LS.get('face') || 'sade';
+if (!FACES.some(function(f){ return f[0] === face; })) face = 'sade';
+
+var NOM = ['on iki','bir','iki','üç','dört','beş','altı','yedi','sekiz','dokuz','on','on bir'];
+var ACC = ['on ikiyi','biri','ikiyi','üçü','dördü','beşi','altıyı','yediyi','sekizi','dokuzu','onu','on biri'];
+var DAT = ['on ikiye','bire','ikiye','üçe','dörde','beşe','altıya','yediye','sekize','dokuza','ona','on bire'];
+var MINW = { 5:'beş', 10:'on', 15:'çeyrek', 20:'yirmi', 25:'yirmi beş' };
+function timeWords(d){
+  var m = Math.round(d.getMinutes() / 5) * 5, h = d.getHours() % 12;
+  if (m === 60) { m = 0; h = (h + 1) % 12; }
+  if (m === 0) return [NOM[h], ''];
+  if (m === 30) return [NOM[h] + ' buçuk', ''];
+  if (m < 30) return [ACC[h] + ' ' + MINW[m], 'geçiyor'];
+  return [DAT[(h + 1) % 12] + ' ' + MINW[60 - m], 'var'];
+}
+
+function buildTicks(){
+  var g = $('ticks'), ns = 'http://www.w3.org/2000/svg';
+  for (var i = 0; i < 60; i++) {
+    var hr = i % 5 === 0, a = i * 6 * Math.PI / 180, r1 = hr ? 82 : 88, r2 = 93;
+    var l = document.createElementNS(ns, 'line');
+    l.setAttribute('x1', 100 + r1 * Math.sin(a)); l.setAttribute('y1', 100 - r1 * Math.cos(a));
+    l.setAttribute('x2', 100 + r2 * Math.sin(a)); l.setAttribute('y2', 100 - r2 * Math.cos(a));
+    l.setAttribute('class', hr ? 'tk h' : 'tk');
+    g.appendChild(l);
+    if (hr) {
+      var t = document.createElementNS(ns, 'text'), rn = 69;
+      t.setAttribute('x', 100 + rn * Math.sin(a)); t.setAttribute('y', 100 - rn * Math.cos(a));
+      t.setAttribute('class', 'num'); t.textContent = i === 0 ? 12 : i / 5;
+      g.appendChild(t);
+    }
+  }
+}
+
 function updateClock(){
   var d = new Date();
-  $('clock').textContent = d.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
-  $('date').textContent = d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
+  var hh = String(d.getHours()).padStart(2,'0'), mm = String(d.getMinutes()).padStart(2,'0');
+  if (face === 'sade' || face === 'gece') {
+    $('clock').textContent = hh + ':' + mm;
+    $('date').textContent = d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
+  } else if (face === 'kalin') {
+    $('bigH').textContent = hh; $('bigM').textContent = mm;
+  } else if (face === 'analog') {
+    var s = d.getSeconds(), m = d.getMinutes() + s / 60, h = (d.getHours() % 12) + m / 60;
+    $('hH').setAttribute('transform', 'rotate(' + (h * 30) + ' 100 100)');
+    $('hM').setAttribute('transform', 'rotate(' + (m * 6) + ' 100 100)');
+    $('hS').setAttribute('transform', 'rotate(' + (s * 6) + ' 100 100)');
+    $('aDay').textContent = d.toLocaleDateString('tr-TR', { weekday:'long' });
+    $('aDate').textContent = d.toLocaleDateString('tr-TR', { day:'numeric', month:'long' });
+  } else if (face === 'kelime') {
+    var w = timeWords(d);
+    $('w1').textContent = w[0]; $('w2').textContent = w[1];
+  }
 }
+
+function setFace(f, announce){
+  face = f; LS.set('face', f);
+  $('idle').setAttribute('data-face', f);
+  var btns = $('faceSeg').querySelectorAll('button');
+  for (var i = 0; i < btns.length; i++) btns[i].setAttribute('aria-pressed', btns[i].getAttribute('data-face') === f ? 'true' : 'false');
+  updateClock();
+  if (announce) FACES.forEach(function(x){ if (x[0] === f) toast(x[1]); });
+}
+$('faceSeg').addEventListener('click', function(e){
+  var f = e.target.getAttribute('data-face'); if (f) setFace(f);
+});
+// Saate dokununca bir sonraki stile geç
+$('idle').addEventListener('click', function(){
+  var i = FACES.findIndex(function(x){ return x[0] === face; });
+  setFace(FACES[(i + 1) % FACES.length][0], true);
+});
 
 /* ---------- Ekran izi koruması: arayüzü dakikada bir birkaç piksel kaydır ---------- */
 function nudge(){
@@ -567,6 +750,7 @@ $('menuBtn').addEventListener('click', function(){
 $('mClose').addEventListener('click', function(){ $('menu').hidden = true; });
 $('menu').addEventListener('click', function(e){ if (e.target === $('menu')) $('menu').hidden = true; });
 $('mRefresh').addEventListener('click', function(){ $('menu').hidden = true; poll(); });
+$('mUpnext').addEventListener('click', function(){ setShowNext(!showNext); });
 $('mLogout').addEventListener('click', function(){ $('menu').hidden = true; logout('Spotify bağlantısı kesildi.'); });
 
 /* ---------- Kurulum ---------- */
@@ -602,7 +786,10 @@ function init(){
   if (LS.get('cid')) $('clientId').value = LS.get('cid');
   var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   $('pwaTip').hidden = !!standalone;
-  updateClock(); setInterval(updateClock, 1000);
+  buildTicks();
+  setFace(face);
+  $('mUpnext').textContent = 'Sıradaki şarkıyı göster: ' + (showNext ? 'Açık' : 'Kapalı');
+  setInterval(updateClock, 1000);
   setInterval(tick, 250);
   setInterval(nudge, 60000);
   keepAwake();

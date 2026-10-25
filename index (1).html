@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Çalıyor">
+<meta name="theme-color" content="#000000">
+<title>Çalıyor</title>
+<link rel="apple-touch-icon" id="touchIcon">
+<link rel="icon" id="favIcon">
+<style>
+:root{
+  --fg:#fff;
+  --fg2:rgba(255,255,255,.62);
+  --fg3:rgba(255,255,255,.24);
+  --glass:rgba(255,255,255,.09);
+  --accent:#fff;
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);
+  --sar:env(safe-area-inset-right,0px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html,body{height:100%;background:#000;color:var(--fg);overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* Arka plan: kapağın bulanık rengi ekranı boyar */
+#bg{position:fixed;inset:0;overflow:hidden;z-index:0;background:#000}
+.bgimg{
+  position:absolute;inset:-25%;
+  background-size:cover;background-position:center;
+  filter:blur(70px) saturate(1.7) brightness(.5);
+  opacity:0;transition:opacity 1.4s ease;
+}
+.bgimg.on{opacity:1}
+#bg::after{content:"";position:absolute;inset:0;
+  background:radial-gradient(120% 120% at 25% 50%,rgba(0,0,0,0) 0%,rgba(0,0,0,.6) 100%)}
+
+#stage{
+  position:relative;z-index:1;height:100%;
+  padding:calc(var(--sat) + 5vh) calc(var(--sar) + 5.5vw) calc(var(--sab) + 5vh) calc(var(--sal) + 5.5vw);
+  transition:transform 3s ease;
+}
+section{height:100%}
+
+/* Çalan şarkı */
+#player{display:flex;align-items:center;gap:6vw}
+.art-wrap{
+  flex:none;height:min(84vh,46vw);aspect-ratio:1/1;
+  border-radius:clamp(10px,2.6vh,24px);overflow:hidden;
+  background:var(--glass);
+  box-shadow:0 3vh 8vh rgba(0,0,0,.55);
+}
+.art-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .5s ease}
+.info{flex:1;min-width:0;display:flex;flex-direction:column;transition:opacity .35s ease}
+.info.swap{opacity:0}
+.device{font-size:clamp(12px,3.4vh,15px);color:var(--fg3);margin-bottom:1.6vh;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+#title{
+  font-size:clamp(22px,8vh,46px);font-weight:700;line-height:1.08;letter-spacing:-.015em;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+#artist{
+  font-size:clamp(16px,5.4vh,30px);color:var(--fg2);margin-top:.9vh;font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.progress{margin-top:5vh;padding:1.2vh 0;cursor:pointer}
+.track{height:clamp(4px,1.5vh,7px);border-radius:99px;background:var(--fg3);overflow:hidden}
+.fill{height:100%;width:100%;background:var(--accent);border-radius:99px;
+  transform-origin:left center;transform:scaleX(0);transition:background 1.2s ease}
+.times{display:flex;justify-content:space-between;margin-top:.6vh;
+  font-size:clamp(11px,3.3vh,14px);color:var(--fg2);font-variant-numeric:tabular-nums;font-weight:500}
+.controls{display:flex;align-items:center;justify-content:space-between;
+  max-width:min(360px,100%);margin-top:3.5vh}
+.controls button{display:grid;place-items:center;padding:1.5vh 2vh;border-radius:99px;transition:transform .12s ease,opacity .12s ease}
+.controls button:active{transform:scale(.86);opacity:.7}
+.controls svg{fill:var(--fg);display:block}
+.skip svg{width:clamp(30px,9vh,46px);height:auto}
+#prev svg{transform:scaleX(-1)}
+#play svg{width:clamp(34px,11vh,56px);height:auto}
+.controls button:focus-visible,.menu-panel button:focus-visible,.setup button:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+
+/* Boşta: büyük saat */
+#idle{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.clock{font-size:min(38vh,24vw);font-weight:300;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.date{font-size:clamp(15px,5vh,26px);color:var(--fg2);margin-top:2vh;font-weight:500}
+.idle-hint{font-size:clamp(12px,3.4vh,15px);color:var(--fg3);margin-top:4vh}
+
+/* Kurulum */
+#setup{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.setup{max-width:600px;margin:0 auto;padding-bottom:4vh}
+.setup h1{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.setup .lead{color:var(--fg2);margin-top:8px;font-size:15px;line-height:1.45}
+.setup ol{margin:22px 0 0 20px;display:grid;gap:14px;font-size:15px;line-height:1.45}
+.setup li::marker{color:var(--fg2)}
+.uri{display:flex;gap:8px;align-items:center;margin-top:8px}
+.uri code{flex:1;min-width:0;font:13px/1.4 ui-monospace,Menlo,monospace;background:var(--glass);
+  border-radius:10px;padding:10px 12px;word-break:break-all;-webkit-user-select:text;user-select:text}
+.btn-small{flex:none;background:var(--glass);border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600}
+.setup input{display:block;width:100%;margin-top:8px;font:16px ui-monospace,Menlo,monospace;color:var(--fg);
+  background:var(--glass);border:1px solid var(--fg3);border-radius:12px;padding:12px 14px;
+  -webkit-user-select:text;user-select:text}
+.setup input:focus{outline:none;border-color:var(--fg2)}
+.btn-main{display:block;width:100%;margin-top:22px;background:#fff;color:#000;border-radius:14px;
+  padding:14px;font-size:17px;font-weight:700}
+.btn-main:active{opacity:.8}
+.tip{margin-top:16px;font-size:13px;line-height:1.45;color:var(--fg2);
+  background:var(--glass);border-radius:12px;padding:12px 14px}
+
+/* Menü */
+#menuBtn{position:fixed;z-index:5;top:calc(var(--sat) + 10px);right:calc(var(--sar) + 12px);
+  width:40px;height:40px;border-radius:50%;display:grid;place-items:center;opacity:.22;transition:opacity .2s}
+#menuBtn:active{opacity:.6}
+#menuBtn svg{fill:var(--fg)}
+#menu{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:rgba(0,0,0,.45)}
+.menu-panel{width:min(320px,86vw);background:rgba(36,36,38,.9);
+  -webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);border-radius:18px;overflow:hidden}
+.menu-panel p{padding:14px 16px;font-size:13px;color:var(--fg2);line-height:1.4;border-bottom:1px solid rgba(255,255,255,.08)}
+.menu-panel button{display:block;width:100%;text-align:left;padding:14px 16px;font-size:16px;
+  border-bottom:1px solid rgba(255,255,255,.08)}
+.menu-panel button:last-child{border-bottom:0;font-weight:600}
+.menu-panel .danger{color:#ff6961}
+
+#toast{position:fixed;z-index:20;left:50%;bottom:calc(var(--sab) + 18px);transform:translate(-50%,20px);
+  max-width:min(520px,90vw);background:rgba(44,44,46,.95);border-radius:14px;padding:11px 16px;
+  font-size:14px;line-height:1.4;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (orientation:portrait){
+  #player{flex-direction:column;justify-content:center;gap:4vh}
+  .art-wrap{height:auto;width:min(80vw,46vh)}
+  .info{width:min(80vw,46vh);flex:none}
+  #title{font-size:clamp(20px,3.4vh,32px)}
+  #artist{font-size:clamp(15px,2.4vh,22px)}
+  .progress{margin-top:2.5vh}
+  .controls{margin:1.5vh auto 0;width:100%}
+  .skip svg{width:clamp(28px,4vh,40px)}
+  #play svg{width:clamp(34px,5vh,50px)}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div id="bg"><div class="bgimg" id="bgA"></div><div class="bgimg" id="bgB"></div></div>
+
+<main id="stage">
+  <section id="setup" hidden>
+    <div class="setup">
+      <h1>Spotify’ı bağla</h1>
+      <p class="lead">Bir kereye mahsus kurulum. Şifreniz bu sayfaya gelmez; giriş Spotify’ın kendi sitesinde yapılır.</p>
+      <ol>
+        <li>Spotify Developer panelinde uygulamanızın <b>Redirect URI</b> alanına şu adresi birebir ekleyin:
+          <div class="uri"><code id="redirectUri"></code><button class="btn-small" id="copyUri">Kopyala</button></div>
+        </li>
+        <li>Panelden aldığınız <b>Client ID</b>’yi buraya yapıştırın:
+          <input id="clientId" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="32 karakterlik kod">
+        </li>
+      </ol>
+      <button class="btn-main" id="connect">Spotify ile bağlan</button>
+      <p class="tip" id="pwaTip" hidden>Önce Safari’de Paylaş menüsünden <b>Ana Ekrana Ekle</b>’ye basın, sonra sayfayı ana ekrandaki ikondan açıp bağlanın. Ana ekran uygulaması girişi Safari’den ayrı saklar.</p>
+    </div>
+  </section>
+
+  <section id="player" hidden>
+    <div class="art-wrap"><img id="art" alt=""></div>
+    <div class="info" id="info">
+      <div class="device" id="device"></div>
+      <h1 id="title"></h1>
+      <p id="artist"></p>
+      <div class="progress" id="progress" role="slider" aria-label="Şarkıda ilerle">
+        <div class="track"><div class="fill" id="fill"></div></div>
+        <div class="times"><span id="elapsed">0:00</span><span id="remaining">-0:00</span></div>
+      </div>
+      <div class="controls">
+        <button class="skip" id="prev" aria-label="Önceki">
+          <svg viewBox="0 0 28 24"><path d="M2 5.3v13.4c0 .8.9 1.3 1.6.9L13 13.4v5.3c0 .8.9 1.3 1.6.9l11-6.7c.6-.4.6-1.4 0-1.8l-11-6.7c-.7-.4-1.6.1-1.6.9v5.3L3.6 4.4C2.9 4 2 4.5 2 5.3z"/></svg>
+        </button>
+        <button id="play" aria-label="Oynat">
+          <svg viewBox="0 0 24 24" id="playIcon"><path d="M7 4.6v14.8c0 .9 1 1.4 1.7.9l11.4-7.4c.7-.4.7-1.4 0-1.8L8.7 3.7C8 3.2 7 3.7 7 4.6z"/></svg>
+        </button>
+        <button class="skip" id="next" aria-label="Sonraki">
+          <svg viewBox="0 0 28 24"><path d="M2 5.3v13.4c0 .8.9 1.3 1.6.9L13 13.4v5.3c0 .8.9 1.3 1.6.9l11-6.7c.6-.4.6-1.4 0-1.8l-11-6.7c-.7-.4-1.6.1-1.6.9v5.3L3.6 4.4C2.9 4 2 4.5 2 5.3z"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section id="idle" hidden>
+    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date"></div>
+    <p class="idle-hint" id="idleHint">Spotify’da bir şey çaldığınızda burada görünecek.</p>
+  </section>
+</main>
+
+<button id="menuBtn" aria-label="Ayarlar" hidden>
+  <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+</button>
+<div id="menu" hidden>
+  <div class="menu-panel">
+    <p id="wakeInfo"></p>
+    <button id="mRefresh">Yenile</button>
+    <button id="mLogout" class="danger">Spotify bağlantısını kes</button>
+    <button id="mClose">Kapat</button>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing';
+var REDIRECT = (location.origin + location.pathname).replace(/index\.html$/, '');
+var PLAY_PATH = 'M7 4.6v14.8c0 .9 1 1.4 1.7.9l11.4-7.4c.7-.4.7-1.4 0-1.8L8.7 3.7C8 3.2 7 3.7 7 4.6z';
+var PAUSE_PATH = 'M6.5 4h3.3c.7 0 1.2.5 1.2 1.2v13.6c0 .7-.5 1.2-1.2 1.2H6.5c-.7 0-1.2-.5-1.2-1.2V5.2C5.3 4.5 5.8 4 6.5 4zm7.7 0h3.3c.7 0 1.2.5 1.2 1.2v13.6c0 .7-.5 1.2-1.2 1.2h-3.3c-.7 0-1.2-.5-1.2-1.2V5.2c0-.7.5-1.2 1.2-1.2z';
+
+/* ---------- Depolama ---------- */
+var LS = {
+  get: function(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set: function(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+  del: function(k){ try { localStorage.removeItem(k); } catch(e){} }
+};
+
+/* ---------- Bildirim ---------- */
+var toastTimer, lastToast = {};
+function toast(msg, onceKey){
+  if (onceKey){
+    if (lastToast[onceKey] && Date.now() - lastToast[onceKey] < 60000) return;
+    lastToast[onceKey] = Date.now();
+  }
+  var t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 3800);
+}
+
+/* ---------- Görünümler ---------- */
+var view = '';
+function show(name){
+  if (view === name) return;
+  view = name;
+  $('setup').hidden = name !== 'setup';
+  $('player').hidden = name !== 'player';
+  $('idle').hidden = name !== 'idle';
+  $('menuBtn').hidden = name === 'setup';
+  if (name !== 'player') { $('bgA').classList.remove('on'); $('bgB').classList.remove('on'); currentBg = ''; }
+}
+
+/* ---------- PKCE ile giriş ---------- */
+function b64url(bytes){
+  var s = ''; for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function randomBytes(n){ var a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+function sha256(str){
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function(b){ return new Uint8Array(b); });
+}
+
+function startLogin(){
+  var cid = $('clientId').value.trim();
+  if (!/^[0-9a-f]{32}$/i.test(cid)) { toast('Client ID 32 karakterlik bir kod olmalı. Panelden tekrar kopyalayın.'); return; }
+  LS.set('cid', cid);
+  var verifier = b64url(randomBytes(64));
+  var st = b64url(randomBytes(16));
+  LS.set('pkce_verifier', verifier); LS.set('pkce_state', st);
+  sha256(verifier).then(function(h){
+    var p = new URLSearchParams({
+      response_type:'code', client_id:cid, scope:SCOPES,
+      code_challenge_method:'S256', code_challenge:b64url(h),
+      redirect_uri:REDIRECT, state:st
+    });
+    location.href = 'https://accounts.spotify.com/authorize?' + p.toString();
+  });
+}
+
+// 'ok' | 'invalid' | 'network'
+function tokenRequest(body){
+  return fetch('https://accounts.spotify.com/api/token', {
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body.toString()
+  }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(j){
+      if (!r.ok) return r.status >= 500 ? 'network' : 'invalid';
+      LS.set('access', j.access_token);
+      LS.set('expires', String(Date.now() + ((j.expires_in || 3600) - 60) * 1000));
+      if (j.refresh_token) LS.set('refresh', j.refresh_token);
+      return 'ok';
+    });
+  }).catch(function(){ return 'network'; });
+}
+
+function handleRedirect(){
+  var q = new URLSearchParams(location.search);
+  if (!q.has('code') && !q.has('error')) return Promise.resolve(null);
+  history.replaceState(null, '', REDIRECT);
+  if (q.get('error')) {
+    toast(q.get('error') === 'access_denied' ? 'İzin verilmedi. Bağlanmak için tekrar deneyin.' : 'Spotify giriş hatası: ' + q.get('error'));
+    return Promise.resolve('invalid');
+  }
+  var verifier = LS.get('pkce_verifier');
+  if (!verifier || q.get('state') !== LS.get('pkce_state')) {
+    toast('Giriş bu pencerede başlamadı. Ana ekrandaki ikondan açıp tekrar bağlanın.');
+    return Promise.resolve('invalid');
+  }
+  return tokenRequest(new URLSearchParams({
+    grant_type:'authorization_code', code:q.get('code'), redirect_uri:REDIRECT,
+    client_id:LS.get('cid') || '', code_verifier:verifier
+  })).then(function(r){
+    LS.del('pkce_verifier'); LS.del('pkce_state');
+    if (r !== 'ok') toast('Bağlantı tamamlanamadı. Redirect URI’nin panelde birebir aynı olduğunu kontrol edin.');
+    return r;
+  });
+}
+
+var refreshing = null;
+function refresh(){
+  if (refreshing) return refreshing;
+  var rt = LS.get('refresh'), cid = LS.get('cid');
+  if (!rt || !cid) return Promise.resolve('invalid');
+  refreshing = tokenRequest(new URLSearchParams({ grant_type:'refresh_token', refresh_token:rt, client_id:cid }))
+    .then(function(r){ refreshing = null; return r; });
+  return refreshing;
+}
+
+function logout(msg){
+  LS.del('access'); LS.del('refresh'); LS.del('expires');
+  clearTimeout(pollTimer);
+  show('setup');
+  if (msg) toast(msg);
+}
+
+function ensureToken(){
+  if (LS.get('access') && Date.now() < Number(LS.get('expires') || 0)) return Promise.resolve();
+  return refresh().then(function(r){
+    if (r === 'invalid') { logout('Oturum sona erdi. Tekrar bağlanın.'); throw new Error('auth'); }
+    if (r !== 'ok') throw new Error('net');
+  });
+}
+
+function api(path, opts){
+  opts = opts || {};
+  var go = function(){
+    return fetch('https://api.spotify.com/v1' + path, {
+      method: opts.method || 'GET',
+      headers: { Authorization: 'Bearer ' + LS.get('access') }
+    });
+  };
+  return ensureToken().then(go).then(function(res){
+    if (res.status !== 401) return res;
+    LS.set('expires', '0');
+    return ensureToken().then(go);
+  });
+}
+
+/* ---------- Durum ---------- */
+var S = { itemId:null, isPlaying:false, progress:0, duration:0, at:0, lockUntil:0 };
+function nowProgress(){
+  var p = S.isPlaying ? S.progress + (performance.now() - S.at) : S.progress;
+  return Math.max(0, Math.min(p, S.duration || 0));
+}
+function fmt(ms){
+  var s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  var mm = h ? String(m).padStart(2,'0') : String(m);
+  return (h ? h + ':' : '') + mm + ':' + String(r).padStart(2,'0');
+}
+function setPlayIcon(){
+  $('playIcon').firstElementChild.setAttribute('d', S.isPlaying ? PAUSE_PATH : PLAY_PATH);
+  $('play').setAttribute('aria-label', S.isPlaying ? 'Duraklat' : 'Oynat');
+}
+
+var endPollQueued = false;
+function tick(){
+  if (view === 'player' && S.duration) {
+    var p = nowProgress();
+    $('fill').style.transform = 'scaleX(' + (p / S.duration).toFixed(4) + ')';
+    $('elapsed').textContent = fmt(p);
+    $('remaining').textContent = '-' + fmt(S.duration - p);
+    if (S.isPlaying && p >= S.duration - 300 && !endPollQueued) {
+      endPollQueued = true; setTimeout(function(){ endPollQueued = false; poll(); }, 900);
+    }
+  }
+}
+
+/* ---------- Kapak ve renk ---------- */
+var currentBg = '', bgFlip = false;
+function setBackground(url){
+  if (url === currentBg) return;
+  currentBg = url;
+  var on = bgFlip ? $('bgA') : $('bgB'), off = bgFlip ? $('bgB') : $('bgA');
+  bgFlip = !bgFlip;
+  on.style.backgroundImage = url ? 'url("' + url + '")' : 'none';
+  on.classList.add('on'); off.classList.remove('on');
+}
+function extractAccent(url){
+  var root = document.documentElement.style;
+  if (!url) { root.setProperty('--accent', '#fff'); return; }
+  var im = new Image(); im.crossOrigin = 'anonymous';
+  im.onload = function(){
+    try {
+      var c = document.createElement('canvas'); c.width = c.height = 24;
+      var x = c.getContext('2d'); x.drawImage(im, 0, 0, 24, 24);
+      var d = x.getImageData(0, 0, 24, 24).data, r = 0, g = 0, b = 0, w = 0;
+      for (var i = 0; i < d.length; i += 4) {
+        var R = d[i], G = d[i+1], B = d[i+2], mx = Math.max(R,G,B), mn = Math.min(R,G,B);
+        var sat = mx ? (mx - mn) / mx : 0, lum = mx / 255;
+        var wt = sat * sat * (lum > .15 ? 1 : .1) + .002;
+        r += R * wt; g += G * wt; b += B * wt; w += wt;
+      }
+      r /= w; g /= w; b /= w;
+      var hsl = rgbToHsl(r, g, b);
+      var s = hsl[1] < .12 ? 0 : Math.min(Math.max(hsl[1] * 100, 40), 80);
+      root.setProperty('--accent', 'hsl(' + Math.round(hsl[0] * 360) + ',' + Math.round(s) + '%,' + (s ? 76 : 96) + '%)');
+    } catch(e) { root.setProperty('--accent', '#fff'); }
+  };
+  im.onerror = function(){ root.setProperty('--accent', '#fff'); };
+  im.src = url;
+}
+function rgbToHsl(r, g, b){
+  r /= 255; g /= 255; b /= 255;
+  var mx = Math.max(r,g,b), mn = Math.min(r,g,b), h = 0, s = 0, l = (mx + mn) / 2;
+  if (mx !== mn) {
+    var d = mx - mn; s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6;
+  }
+  return [h, s, l];
+}
+
+var trackToken = 0;
+function setTrack(title, artist, img){
+  var info = $('info'), art = $('art');
+  info.classList.add('swap');
+  var token = ++trackToken, applied = false;
+  var apply = function(){
+    if (applied || token !== trackToken) return; applied = true;
+    $('title').textContent = title || '';
+    $('artist').textContent = artist || '';
+    art.src = img || ''; art.style.opacity = img ? 1 : 0;
+    setBackground(img || '');
+    extractAccent(img);
+    info.classList.remove('swap');
+  };
+  if (img) { var pre = new Image(); pre.onload = pre.onerror = apply; pre.src = img; setTimeout(apply, 1500); }
+  else setTimeout(apply, 200);
+}
+
+function applyState(j){
+  if (!j || !j.item) { showIdle(j && j.device ? 'Spotify açık ama şu an bir şey çalmıyor.' : null); return; }
+  var it = j.item, ep = it.type === 'episode';
+  var imgs = ep ? ((it.images && it.images.length) ? it.images : ((it.show && it.show.images) || []))
+                : ((it.album && it.album.images) || []);
+  var img = imgs[0] ? imgs[0].url : '';
+  var artist = ep ? ((it.show && it.show.name) || '') : (it.artists || []).map(function(a){ return a.name; }).join(', ');
+  S.duration = it.duration_ms || 0;
+  if (performance.now() > S.lockUntil) {
+    S.isPlaying = !!j.is_playing; S.progress = j.progress_ms || 0; S.at = performance.now();
+    setPlayIcon();
+  }
+  var id = it.id || it.uri || it.name;
+  if (S.itemId !== id) { S.itemId = id; setTrack(it.name, artist, img); }
+  $('device').textContent = j.device && j.device.name ? j.device.name : '';
+  show('player');
+  tick();
+}
+function showIdle(hint){
+  S.itemId = null;
+  $('idleHint').textContent = hint || 'Spotify’da bir şey çaldığınızda burada görünecek.';
+  show('idle');
+}
+
+/* ---------- Yoklama ---------- */
+var pollTimer = null, backoffUntil = 0;
+function poll(){
+  clearTimeout(pollTimer);
+  if (!LS.get('refresh')) return;
+  var delay = document.hidden ? 15000 : 2500;
+  if (Date.now() < backoffUntil) { pollTimer = setTimeout(poll, backoffUntil - Date.now()); return; }
+  api('/me/player?additional_types=episode').then(function(res){
+    if (res.status === 204) { showIdle(); return; }
+    if (res.status === 429) {
+      var ra = Number(res.headers.get('Retry-After')) || 15;
+      backoffUntil = Date.now() + ra * 1000; delay = ra * 1000; return;
+    }
+    if (res.status === 403) {
+      toast('Spotify erişimi reddetti. Developer panelinde “User Management” listesine kendi e-postanızı ekleyin; uygulama sahibinin Premium olması gerekiyor.', 'forbidden');
+      delay = 20000; return;
+    }
+    if (!res.ok) { delay = 6000; return; }
+    return res.json().then(applyState);
+  }).catch(function(e){
+    if (e && e.message === 'auth') { delay = -1; return; }
+    delay = 6000;
+  }).then(function(){
+    if (delay >= 0 && LS.get('refresh')) pollTimer = setTimeout(poll, delay);
+  });
+}
+
+/* ---------- Kontroller ---------- */
+function control(method, path){
+  return api(path, { method:method }).then(function(r){
+    if (r.status === 403) toast('Çalmayı kontrol etmek için Spotify Premium gerekiyor.', 'premium');
+    else if (r.status === 404) toast('Aktif bir cihaz yok. Önce Spotify’da bir şey çalmaya başlayın.', 'nodevice');
+  }).catch(function(){}).then(function(){ setTimeout(poll, 450); });
+}
+$('play').addEventListener('click', function(){
+  S.progress = nowProgress(); S.at = performance.now();
+  var wasPlaying = S.isPlaying;
+  S.isPlaying = !wasPlaying; S.lockUntil = performance.now() + 1500; setPlayIcon();
+  control('PUT', wasPlaying ? '/me/player/pause' : '/me/player/play');
+});
+$('next').addEventListener('click', function(){ S.lockUntil = 0; control('POST', '/me/player/next'); });
+$('prev').addEventListener('click', function(){ S.lockUntil = 0; control('POST', '/me/player/previous'); });
+$('progress').addEventListener('click', function(e){
+  if (!S.duration) return;
+  var rect = $('progress').getBoundingClientRect();
+  var ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  var pos = Math.round(ratio * S.duration);
+  S.progress = pos; S.at = performance.now(); S.lockUntil = performance.now() + 1500; tick();
+  control('PUT', '/me/player/seek?position_ms=' + pos);
+});
+
+/* ---------- Ekranı açık tut ---------- */
+var wakeLock = null, wakeState = 'bekleniyor';
+function keepAwake(){
+  if (!('wakeLock' in navigator)) { wakeState = 'desteklenmiyor'; return; }
+  if (wakeLock && !wakeLock.released) return;
+  navigator.wakeLock.request('screen').then(function(l){
+    wakeLock = l; wakeState = 'açık';
+    l.addEventListener('release', function(){ wakeState = 'kapalı'; });
+  }).catch(function(){ wakeState = 'izin verilmedi'; });
+}
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden) { keepAwake(); poll(); }
+});
+document.addEventListener('click', keepAwake);
+document.addEventListener('touchend', keepAwake, { passive:true });
+
+/* ---------- Saat ---------- */
+function updateClock(){
+  var d = new Date();
+  $('clock').textContent = d.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
+  $('date').textContent = d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
+}
+
+/* ---------- Ekran izi koruması: arayüzü dakikada bir birkaç piksel kaydır ---------- */
+function nudge(){
+  var rx = Math.round(Math.random() * 12 - 6), ry = Math.round(Math.random() * 8 - 4);
+  $('stage').style.transform = 'translate(' + rx + 'px,' + ry + 'px)';
+}
+
+/* ---------- Menü ---------- */
+$('menuBtn').addEventListener('click', function(){
+  $('wakeInfo').textContent = 'Ekranı açık tutma: ' + wakeState +
+    (wakeState === 'açık' ? '' : '. Kapanırsa Rehberli Erişim’deki “Ekran Otomatik Kilidi: Asla” ayarını kullanın.');
+  $('menu').hidden = false;
+});
+$('mClose').addEventListener('click', function(){ $('menu').hidden = true; });
+$('menu').addEventListener('click', function(e){ if (e.target === $('menu')) $('menu').hidden = true; });
+$('mRefresh').addEventListener('click', function(){ $('menu').hidden = true; poll(); });
+$('mLogout').addEventListener('click', function(){ $('menu').hidden = true; logout('Spotify bağlantısı kesildi.'); });
+
+/* ---------- Kurulum ---------- */
+$('connect').addEventListener('click', startLogin);
+$('copyUri').addEventListener('click', function(){
+  var done = function(){ toast('Adres kopyalandı.'); };
+  if (navigator.clipboard) navigator.clipboard.writeText(REDIRECT).then(done, function(){ toast('Kopyalanamadı, adresi elle seçin.'); });
+});
+
+/* ---------- Ana ekran ikonu ---------- */
+function drawIcon(){
+  try {
+    var c = document.createElement('canvas'); c.width = c.height = 180;
+    var x = c.getContext('2d');
+    x.fillStyle = '#000'; x.fillRect(0, 0, 180, 180);
+    var g = x.createLinearGradient(30, 30, 150, 150);
+    g.addColorStop(0, '#ff9a62'); g.addColorStop(.5, '#d6457d'); g.addColorStop(1, '#5a3fd6');
+    x.fillStyle = g;
+    x.beginPath(); x.roundRect ? x.roundRect(30, 46, 88, 88, 14) : x.rect(30, 46, 88, 88); x.fill();
+    x.fillStyle = '#fff';
+    x.fillRect(128, 64, 26, 9); x.fillRect(128, 86, 18, 9);
+    x.fillStyle = 'rgba(255,255,255,.35)'; x.fillRect(128, 112, 26, 5);
+    x.fillStyle = '#fff'; x.fillRect(128, 112, 12, 5);
+    var u = c.toDataURL('image/png');
+    $('touchIcon').href = u; $('favIcon').href = u;
+  } catch(e) {}
+}
+
+/* ---------- Başlat ---------- */
+function init(){
+  drawIcon();
+  $('redirectUri').textContent = REDIRECT;
+  if (LS.get('cid')) $('clientId').value = LS.get('cid');
+  var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  $('pwaTip').hidden = !!standalone;
+  updateClock(); setInterval(updateClock, 1000);
+  setInterval(tick, 250);
+  setInterval(nudge, 60000);
+  keepAwake();
+  handleRedirect().then(function(){
+    if (LS.get('refresh')) { showIdle(); poll(); }
+    else show('setup');
+  });
+}
+init();
+})();
+</script>
+</body>
+</html>

@@ -1010,6 +1010,9 @@ $('idle').addEventListener('click', function(){ if (S.itemId) exitClock(); });
 // Sadece kapak ve kontrol alanının DIŞINA (ekran kenarlarına) dokununca büyük saate geç
 $('stage').addEventListener('click', function(e){
   if (view !== 'player') return;
+  // Kod içinden tetiklenen tıklamalar (kaydırınca "sonraki", çift dokununca "beğen")
+  // ekranın (0,0) noktasından geliyormuş gibi görünür; bunlar saati açmamalı
+  if (!e.isTrusted || e.target.closest('button')) return;
   var a = $('artWrap').getBoundingClientRect(), b = $('info').getBoundingClientRect();
   var left = Math.min(a.left, b.left), right = Math.max(a.right, b.right);
   var top = Math.min(a.top, b.top), bottom = Math.max(a.bottom, b.bottom);

@@ -202,9 +202,14 @@ section{height:100%}
   background:var(--glass);border-radius:12px;padding:12px 14px}
 
 /* Menü */
-#menuBtn{position:fixed;z-index:5;top:calc(var(--sat) + 10px);right:calc(var(--sar) + 12px);
+#menuBtn{position:fixed;z-index:5;bottom:calc(var(--sab) + 6px);right:calc(var(--sar) + 6px);
   width:40px;height:40px;border-radius:50%;display:grid;place-items:center;opacity:.22;transition:opacity .2s}
 #menuBtn:active{opacity:.6}
+#miniClock{position:fixed;z-index:5;top:calc(var(--sat) + 8px);right:calc(var(--sar) + 16px);
+  padding:4px 6px;font-size:clamp(13px,4vh,17px);font-weight:600;color:var(--fg2);
+  font-variant-numeric:tabular-nums;letter-spacing:.01em}
+#miniClock:active{opacity:.6}
+.info.has-shelf .shelf{margin-right:44px}
 #menuBtn svg{fill:var(--fg)}
 #menu,#mixSheet{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:rgba(0,0,0,.45)}
 .menu-panel{width:min(320px,86vw);background:rgba(36,36,38,.9);
@@ -324,6 +329,7 @@ section{height:100%}
   </section>
 </main>
 
+<button id="miniClock" aria-label="Büyük saati göster" hidden>--:--</button>
 <button id="menuBtn" aria-label="Ayarlar" hidden>
   <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
 </button>
@@ -393,6 +399,7 @@ function show(name){
   $('player').hidden = name !== 'player';
   $('idle').hidden = name !== 'idle';
   $('menuBtn').hidden = name === 'setup';
+  $('miniClock').hidden = name !== 'player';
   if (name !== 'player') { $('bgA').classList.remove('on'); $('bgB').classList.remove('on'); currentBg = ''; }
 }
 
@@ -503,7 +510,7 @@ function api(path, opts){
 }
 
 /* ---------- Durum ---------- */
-var S = { itemId:null, isPlaying:false, progress:0, duration:0, at:0, lockUntil:0, deviceId:'', context:'' };
+var S = { itemId:null, isPlaying:false, progress:0, duration:0, at:0, lockUntil:0, deviceId:'', context:'', img:'' };
 function nowProgress(){
   var p = S.isPlaying ? S.progress + (performance.now() - S.at) : S.progress;
   return Math.max(0, Math.min(p, S.duration || 0));
@@ -584,8 +591,9 @@ function setTrack(title, artist, img){
     if (applied || token !== trackToken) return; applied = true;
     $('title').textContent = title || '';
     $('artist').textContent = artist || '';
+    S.img = img || '';
     art.src = img || ''; art.style.opacity = img ? 1 : 0;
-    setBackground(img || '');
+    if (view === 'player') setBackground(img || '');
     extractAccent(img);
     info.classList.remove('swap');
   };
@@ -612,7 +620,8 @@ function applyState(j){
   if (j.device && j.device.id) S.deviceId = j.device.id;
   var ctx = j.context && j.context.uri ? j.context.uri : '';
   if (ctx !== S.context) { S.context = ctx; markActiveMix(); }
-  show('player');
+  if (clockMode) { $('idleHint').textContent = 'Müziğe dönmek için saate dokunun.'; show('idle'); }
+  else show('player');
   maybeQueue(changed);
   tick();
 }
@@ -651,7 +660,7 @@ function setShowNext(v){
   if (v) maybeQueue(true); else setUpnextVisible(false);
 }
 function showIdle(hint){
-  S.itemId = null;
+  S.itemId = null; clockMode = false;
   $('idleHint').textContent = hint || 'Spotify’da bir şey çaldığınızda burada görünecek.';
   show('idle');
 }
@@ -841,6 +850,7 @@ function buildTicks(){
 function updateClock(){
   var d = new Date();
   var hh = String(d.getHours()).padStart(2,'0'), mm = String(d.getMinutes()).padStart(2,'0');
+  $('miniClock').textContent = hh + ':' + mm;
   if (face === 'sade' || face === 'gece') {
     $('clock').textContent = hh + ':' + mm;
     $('date').textContent = d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
@@ -870,11 +880,33 @@ function setFace(f, announce){
 $('faceSeg').addEventListener('click', function(e){
   var f = e.target.getAttribute('data-face'); if (f) setFace(f);
 });
-// Saate dokununca bir sonraki stile geç
+/* ---------- Saat modu: müzik çalarken büyük saate geçip geri dönme ---------- */
+var clockMode = false;
+function enterClock(){
+  clockMode = true;
+  $('idleHint').textContent = 'Müziğe dönmek için saate dokunun.';
+  show('idle');
+}
+function exitClock(){
+  clockMode = false;
+  show('player');
+  setBackground(S.img || '');
+  extractAccent(S.img || '');
+  maybeQueue(true);
+  tick();
+}
+// Büyük saate dokununca: müzik varsa çalan ekranına dön, yoksa saat stilini değiştir
 $('idle').addEventListener('click', function(){
+  if (S.itemId) { exitClock(); return; }
   var i = FACES.findIndex(function(x){ return x[0] === face; });
   setFace(FACES[(i + 1) % FACES.length][0], true);
 });
+// Çalan ekranında boş bir yere ya da küçük saate dokununca büyük saate geç
+$('player').addEventListener('click', function(e){
+  if (e.target.closest('button, .progress, .shelf')) return;
+  enterClock();
+});
+$('miniClock').addEventListener('click', enterClock);
 
 /* ---------- Ekran izi koruması: arayüzü dakikada bir birkaç piksel kaydır ---------- */
 function nudge(){

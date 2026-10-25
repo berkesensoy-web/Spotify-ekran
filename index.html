@@ -102,16 +102,30 @@ section{height:100%}
 .upnext span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .upnext b{color:var(--fg3);font-weight:600;margin-right:.35em}
 
+/* Beğen düğmesi */
+.titlerow{display:flex;align-items:center;gap:clamp(10px,2.4vw,22px)}
+.tt{flex:1;min-width:0}
+#like{flex:none;width:clamp(26px,7.5vh,36px);height:clamp(26px,7.5vh,36px);display:grid;place-items:center;
+  border-radius:50%;color:var(--fg2);transition:transform .15s ease,color .4s ease}
+#like:active{transform:scale(.85)}
+#like svg{width:100%;height:100%;display:block}
+#like .l-on{display:none}
+#like.saved{color:var(--accent)}
+#like.saved .l-on{display:inline}
+#like.saved .l-off{display:none}
+#like.pop{animation:pop .35s ease}
+@keyframes pop{40%{transform:scale(1.22)}100%{transform:scale(1)}}
+
 /* Mix rafı */
 .meta{display:flex;flex-direction:column;min-width:0}
 .info.has-shelf{height:min(84vh,46vw)}
-.info.has-shelf .meta{margin-top:auto}
-.info.has-shelf #title{font-size:clamp(20px,7vh,40px)}
+.info.has-shelf .meta{margin-top:auto;padding-top:3.5vh}
+.info.has-shelf #title{font-size:clamp(20px,6.6vh,38px)}
 .info.has-shelf .progress{margin-top:3vh}
 .info.has-shelf .controls{margin-top:1.5vh}
 .shelf{--gap:clamp(5px,1.6vh,9px);
   /* 5 sütun: genişliği doldur ama iki sıra yüksekliğe sığsın */
-  --tile:min(calc((100cqw - 4 * var(--gap)) / 5), 15vh);
+  --tile:min(calc((100cqw - 4 * var(--gap)) / 5), 13vh);
   display:grid;grid-template-columns:repeat(5,var(--tile));gap:var(--gap);
   max-height:calc(var(--tile) * 2 + var(--gap) + 6px);overflow-y:auto;scrollbar-width:none;
   -webkit-overflow-scrolling:touch;padding:3px;margin:-3px}
@@ -127,7 +141,7 @@ section{height:100%}
   line-height:1.05;font-variant-numeric:tabular-nums;overflow:hidden;word-break:break-word;transition:color .3s ease}
 .mix.on{background:rgba(255,255,255,.9);box-shadow:none}
 .mix.on span{color:#000;font-weight:600}
-.info.has-next .shelf{--tile:min(calc((100cqw - 4 * var(--gap)) / 5), 11vh)}
+.info.has-next .shelf{--tile:min(calc((100cqw - 4 * var(--gap)) / 5), 10vh)}
 .mix.rnd svg{width:50%;height:50%;fill:none;stroke:var(--fg2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s}
 .mix.rnd span{padding:0}
 #art:not([src]),#art[src=""]{visibility:hidden}
@@ -256,7 +270,7 @@ section{height:100%}
   .words .w1,.words .w2{font-size:12vw}
 }
 @media (prefers-reduced-motion:reduce){
-  *{transition:none!important}
+  *{transition:none!important;animation:none!important}
 }
 </style>
 </head>
@@ -288,8 +302,15 @@ section{height:100%}
       <div class="meta">
       <div class="device"><span id="device"></span><span id="devSep" hidden> – </span><span id="miniClock">--:--</span></div>
       <div class="upnext" id="upnext" hidden><img id="nextArt" alt=""><span><b>Sıradaki</b><span id="nextText"></span></span></div>
-      <h1 id="title"></h1>
-      <p id="artist"></p>
+      <div class="titlerow">
+        <div class="tt"><h1 id="title"></h1><p id="artist"></p></div>
+        <button id="like" aria-label="Beğenilen Şarkılar’a ekle" hidden>
+          <svg viewBox="0 0 24 24">
+            <g class="l-off"><circle cx="12" cy="12" r="10.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.6v8.8M7.6 12h8.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></g>
+            <g class="l-on"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M7.4 12.4l3.1 3 6.1-6.3" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+          </svg>
+        </button>
+      </div>
       <div class="progress" id="progress" role="slider" aria-label="Şarkıda ilerle">
         <div class="track"><div class="fill" id="fill"></div></div>
         <div class="times"><span id="elapsed">0:00</span><span id="remaining">-0:00</span></div>
@@ -372,7 +393,7 @@ section{height:100%}
 (function(){
 'use strict';
 var $ = function(id){ return document.getElementById(id); };
-var SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing';
+var SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing user-library-read user-library-modify';
 var REDIRECT = (location.origin + location.pathname).replace(/index\.html$/, '');
 var PLAY_PATH = 'M7 4.6v14.8c0 .9 1 1.4 1.7.9l11.4-7.4c.7-.4.7-1.4 0-1.8L8.7 3.7C8 3.2 7 3.7 7 4.6z';
 var PAUSE_PATH = 'M6.5 4h3.3c.7 0 1.2.5 1.2 1.2v13.6c0 .7-.5 1.2-1.2 1.2H6.5c-.7 0-1.2-.5-1.2-1.2V5.2C5.3 4.5 5.8 4 6.5 4zm7.7 0h3.3c.7 0 1.2.5 1.2 1.2v13.6c0 .7-.5 1.2-1.2 1.2h-3.3c-.7 0-1.2-.5-1.2-1.2V5.2c0-.7.5-1.2 1.2-1.2z';
@@ -444,6 +465,7 @@ function tokenRequest(body){
       LS.set('access', j.access_token);
       LS.set('expires', String(Date.now() + ((j.expires_in || 3600) - 60) * 1000));
       if (j.refresh_token) LS.set('refresh', j.refresh_token);
+      if (j.scope) LS.set('scope', j.scope);
       return 'ok';
     });
   }).catch(function(){ return 'network'; });
@@ -514,7 +536,7 @@ function api(path, opts){
 }
 
 /* ---------- Durum ---------- */
-var S = { itemId:null, isPlaying:false, progress:0, duration:0, at:0, lockUntil:0, deviceId:'', context:'', img:'' };
+var S = { itemId:null, isPlaying:false, progress:0, duration:0, at:0, lockUntil:0, deviceId:'', context:'', img:'', trackUri:'', liked:false };
 function nowProgress(){
   var p = S.isPlaying ? S.progress + (performance.now() - S.at) : S.progress;
   return Math.max(0, Math.min(p, S.duration || 0));
@@ -619,6 +641,8 @@ function applyState(j){
   }
   var id = it.id || it.uri || it.name;
   var changed = S.itemId !== id;
+  var uri = (!it.is_local && it.uri) ? it.uri : '';
+  if (uri !== S.trackUri) { S.trackUri = uri; checkLiked(); }
   if (changed) { S.itemId = id; setTrack(it.name, artist, img); }
   $('device').textContent = j.device && j.device.name ? j.device.name : '';
   $('devSep').hidden = !$('device').textContent;
@@ -719,6 +743,45 @@ $('progress').addEventListener('click', function(e){
   var pos = Math.round(ratio * S.duration);
   S.progress = pos; S.at = performance.now(); S.lockUntil = performance.now() + 1500; tick();
   control('PUT', '/me/player/seek?position_ms=' + pos);
+});
+
+/* ---------- Beğenilen Şarkılar ---------- */
+function hasLibScope(){
+  var sc = LS.get('scope');
+  return sc === null || sc.indexOf('user-library-modify') >= 0; // eski girişlerde bilinmiyor: dene
+}
+function setLiked(v, animate){
+  S.liked = v;
+  var b = $('like');
+  b.classList.toggle('saved', v);
+  b.setAttribute('aria-label', v ? 'Beğenilen Şarkılar’dan çıkar' : 'Beğenilen Şarkılar’a ekle');
+  if (animate) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+}
+function needReconnect(){
+  toast('Beğenme için yeni izin gerekiyor: menüden “Spotify bağlantısını kes”e basıp tekrar bağlanın.', 'scope');
+}
+function checkLiked(){
+  var uri = S.trackUri;
+  $('like').hidden = !uri;
+  setLiked(false);
+  if (!uri) return;
+  api('/me/library/contains?uris=' + encodeURIComponent(uri)).then(function(r){
+    return r.ok ? r.json() : null;
+  }).then(function(j){
+    if (uri === S.trackUri && Array.isArray(j)) setLiked(!!j[0]);
+  }).catch(function(){});
+}
+$('like').addEventListener('click', function(){
+  var uri = S.trackUri; if (!uri) return;
+  if (!hasLibScope()) { needReconnect(); return; }
+  var want = !S.liked;
+  setLiked(want, want);
+  api('/me/library?uris=' + encodeURIComponent(uri), { method: want ? 'PUT' : 'DELETE' }).then(function(r){
+    if (r.ok) { toast(want ? 'Beğenilen Şarkılar’a eklendi' : 'Beğenilen Şarkılar’dan çıkarıldı'); return; }
+    if (uri === S.trackUri) setLiked(!want);
+    if (r.status === 401 || r.status === 403) needReconnect();
+    else toast('Kaydedilemedi, tekrar deneyin.');
+  }).catch(function(){ if (uri === S.trackUri) setLiked(!want); toast('Bağlantı yok, kaydedilemedi.'); });
 });
 
 /* ---------- Mix rafı ---------- */

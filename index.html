@@ -144,8 +144,13 @@ section{height:100%}
   line-height:1.05;font-variant-numeric:tabular-nums;overflow:hidden;word-break:break-word;transition:color .3s ease}
 .mix.on{background:rgba(255,255,255,.9);box-shadow:none}
 .mix.on span{color:#000;font-weight:600}
-.mix.rnd svg{width:50%;height:50%;fill:none;stroke:var(--fg2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s}
-.mix.rnd span{padding:0}
+/* Kapaklı kareler: mix'te son çalan şarkının kapağı */
+.mix.has-art{background-size:cover;background-position:center;background-color:transparent;
+  -webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  transition:transform .12s ease,filter .4s ease,box-shadow .3s ease}
+.mix.has-art span{display:none}
+.mix.has-art:not(.on){filter:brightness(.68) saturate(.85)}
+.mix.has-art.on{background-color:transparent;box-shadow:inset 0 0 0 2px #fff}
 #art:not([src]),#art[src=""]{visibility:hidden}
 .mix.add{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;
   box-shadow:inset 0 0 0 1.5px var(--fg3)}
@@ -640,6 +645,7 @@ function applyState(j){
   var imgs = ep ? ((it.images && it.images.length) ? it.images : ((it.show && it.show.images) || []))
                 : ((it.album && it.album.images) || []);
   var img = imgs[0] ? imgs[0].url : '';
+  var thumb = imgs[1] ? imgs[1].url : img;
   var artist = ep ? ((it.show && it.show.name) || '') : (it.artists || []).map(function(a){ return a.name; }).join(', ');
   S.duration = it.duration_ms || 0;
   if (performance.now() > S.lockUntil) {
@@ -657,6 +663,8 @@ function applyState(j){
   var ctx = j.context && j.context.uri ? j.context.uri : '';
   if (ctx !== S.context) { S.context = ctx; markActiveMix(); }
   updateMetaLine();
+  // Mix çalıyorsa, karesine şu anki kapağı koy
+  if (S.context.indexOf('spotify:playlist:') === 0) setMixArt(S.context.split(':')[2], thumb);
   // 3 dakikadan uzun duraklatılırsa büyük saate geç, müzik başlayınca geri dön
   if (S.isPlaying) {
     pausedSince = 0;
@@ -804,6 +812,20 @@ $('like').addEventListener('click', function(){
 /* ---------- Mix rafı ---------- */
 function loadMixes(){ try { var m = JSON.parse(LS.get('mixes') || '[]'); return Array.isArray(m) ? m : []; } catch(e){ return []; } }
 var mixes = loadMixes(), shelfOn = LS.get('shelf') === '1';
+var mixArt = (function(){ try { return JSON.parse(LS.get('mixart') || '{}') || {}; } catch(e){ return {}; } })();
+function setMixArt(id, url){
+  if (!url || mixArt[id] === url || !mixes.some(function(m){ return m.id === id; })) return;
+  var pre = new Image();
+  pre.onload = function(){ mixArt[id] = url; LS.set('mixart', JSON.stringify(mixArt)); paintTile(id); };
+  pre.src = url;
+}
+function paintTile(id, el){
+  var t = el || $('shelf').querySelector('.mix[data-uri="spotify:playlist:' + id + '"]');
+  if (!t) return;
+  var u = mixArt[id];
+  t.classList.toggle('has-art', !!u);
+  t.style.backgroundImage = u ? 'url("' + u + '")' : '';
+}
 function saveMixes(){ LS.set('mixes', JSON.stringify(mixes)); }
 function playlistId(text){
   var m = String(text || '').match(/playlist[\/:]([A-Za-z0-9]{22})/);
@@ -820,18 +842,12 @@ function renderShelf(){
     var b = document.createElement('button');
     b.className = 'mix';
     b.setAttribute('data-uri', 'spotify:playlist:' + m.id);
+    paintTile(m.id, b);
     b.setAttribute('aria-label', m.name + ' çal');
     var sp = document.createElement('span'); sp.textContent = m.name; b.appendChild(sp);
     b.addEventListener('click', function(){ playMix(m); });
     shelf.appendChild(b);
   });
-  if (mixes.length >= 2) {
-    var rnd = document.createElement('button');
-    rnd.className = 'mix rnd'; rnd.setAttribute('aria-label', 'Rastgele bir mix çal');
-    rnd.innerHTML = '<span><svg viewBox="0 0 24 24"><path d="M3 7h3.5c2 0 3.2 1 4.3 2.6l2.4 4.8c1.1 1.6 2.3 2.6 4.3 2.6H21"/><path d="M3 17h3.5c1.4 0 2.4-.5 3.3-1.4"/><path d="M14.2 8.4c.9-.9 1.9-1.4 3.3-1.4H21"/><path d="M18.5 4.5 21 7l-2.5 2.5"/><path d="M18.5 14.5 21 17l-2.5 2.5"/></svg></span>';
-    rnd.addEventListener('click', playRandomMix);
-    shelf.appendChild(rnd);
-  }
   if (mixes.length) { markActiveMix(); return; }
   var add = document.createElement('button');
   add.className = 'mix add'; add.setAttribute('aria-label', 'Mix ekle');
@@ -872,13 +888,6 @@ function playMix(m){
     else if (r.status === 404) toast('Aktif bir cihaz yok. Önce Spotify’da bir şey çalmaya başlayın.', 'nodevice');
   }).catch(function(){}).then(function(){ setTimeout(poll, 600); });
 }
-// Rastgele kare: çalmayan mix'lerden birini seçip karışık başlat
-function playRandomMix(){
-  var pool = mixes.filter(function(m){ return 'spotify:playlist:' + m.id !== S.context; });
-  if (!pool.length) pool = mixes;
-  var m = pool[Math.floor(Math.random() * pool.length)];
-  if (m) playMix(m);
-}
 function setShelf(v){
   shelfOn = v; LS.set('shelf', v ? '1' : '0');
   $('mShelf').textContent = 'Mix rafı: ' + (v ? 'Açık' : 'Kapalı');
@@ -892,7 +901,7 @@ function renderMixList(){
     var sw = document.createElement('i');
     var nm = document.createElement('span'); nm.textContent = m.name;
     var del = document.createElement('button'); del.textContent = 'Sil';
-    del.addEventListener('click', function(){ mixes.splice(i, 1); saveMixes(); renderMixList(); renderShelf(); });
+    del.addEventListener('click', function(){ delete mixArt[m.id]; LS.set('mixart', JSON.stringify(mixArt)); mixes.splice(i, 1); saveMixes(); renderMixList(); renderShelf(); });
     row.appendChild(sw); row.appendChild(nm); row.appendChild(del);
     list.appendChild(row);
   });

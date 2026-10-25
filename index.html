@@ -22,6 +22,8 @@
   --sab:env(safe-area-inset-bottom,0px);
   --sal:env(safe-area-inset-left,0px);
   --sar:env(safe-area-inset-right,0px);
+  --padv:calc(max(env(safe-area-inset-top,0px), env(safe-area-inset-bottom,0px)) + 3vh);
+  --artH:min(calc(100vh - 2 * var(--padv)), 46vw);
   color-scheme:dark;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -50,7 +52,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 #stage{
   position:relative;z-index:1;height:100%;
-  padding:calc(var(--sat) + 5vh) calc(var(--sar) + 5.5vw) calc(var(--sab) + 5vh) calc(var(--sal) + 5.5vw);
+  /* üst ve alt boşluk eşit: kapak ekranda tam ortada durur */
+  padding:var(--padv) calc(var(--sar) + 5.5vw) var(--padv) calc(var(--sal) + 5.5vw);
   transition:transform 3s ease;
 }
 section{height:100%}
@@ -58,7 +61,7 @@ section{height:100%}
 /* Çalan şarkı */
 #player{display:flex;align-items:center;gap:6vw}
 .art-wrap{
-  flex:none;height:min(84vh,46vw);aspect-ratio:1/1;
+  flex:none;position:relative;height:var(--artH);aspect-ratio:1/1;
   border-radius:clamp(10px,2.6vh,24px);overflow:hidden;
   background:var(--glass);
   box-shadow:0 3vh 8vh rgba(0,0,0,.55);
@@ -118,14 +121,14 @@ section{height:100%}
 
 /* Mix rafı */
 .meta{display:flex;flex-direction:column;min-width:0}
-.info.has-shelf{height:min(84vh,46vw)}
-.info.has-shelf .meta{margin-top:auto;padding-top:3.5vh}
+.info.has-shelf{height:var(--artH)}
+.info.has-shelf .meta{margin-top:auto;padding-top:3vh}
 .info.has-shelf #title{font-size:clamp(20px,6.6vh,38px)}
 .info.has-shelf .progress{margin-top:3vh}
 .info.has-shelf .controls{margin-top:1.5vh}
 .shelf{--gap:clamp(5px,1.6vh,9px);
   /* 5 sütun: genişliği doldur ama iki sıra yüksekliğe sığsın */
-  --tile:min(calc((100cqw - 4 * var(--gap)) / 5), 13vh);
+  --tile:min(calc((100cqw - 4 * var(--gap)) / 5), 12vh);
   display:grid;grid-template-columns:repeat(5,var(--tile));gap:var(--gap);
   max-height:calc(var(--tile) * 2 + var(--gap) + 6px);overflow-y:auto;scrollbar-width:none;
   -webkit-overflow-scrolling:touch;padding:3px;margin:-3px}
@@ -161,28 +164,32 @@ section{height:100%}
 .mix-add input:focus{outline:none;border-color:var(--fg2)}
 .menu-panel .mix-add button{border:0;text-align:center;background:#fff;color:#000;border-radius:10px;padding:10px;font-weight:700}
 
-/* Boşta: saat yüzleri */
+/* Boşta: analog saat */
 #idle{position:relative;cursor:pointer}
-.face{display:none;height:100%;align-items:center;justify-content:center;text-align:center}
-#idle[data-face="sade"] .f-sade,#idle[data-face="gece"] .f-sade{display:flex;flex-direction:column}
-#idle[data-face="kalin"] .f-kalin{display:flex}
-#idle[data-face="analog"] .f-analog{display:flex;gap:7vw}
-#idle[data-face="kelime"] .f-kelime{display:flex;justify-content:flex-start;text-align:left}
+.f-analog{display:flex;height:100%;align-items:center;justify-content:center;gap:7vw}
+.idle-hint{font-size:clamp(12px,3.4vh,15px);color:var(--fg3);margin-top:2.5vh;max-width:28ch;font-weight:500}
 
-.clock{font-size:min(38vh,24vw);font-weight:300;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
-.date{font-size:clamp(15px,5vh,26px);color:var(--fg2);margin-top:2vh;font-weight:500}
-.idle-hint{font-size:clamp(12px,3.4vh,15px);color:var(--fg3);margin-top:4vh}
-#idle:not([data-face="sade"]) .idle-hint{display:none}
+/* Kapak hareketleri */
+.art-wrap.nl{animation:nl .32s ease}
+.art-wrap.nr{animation:nr .32s ease}
+@keyframes nl{40%{transform:translateX(-4%)}}
+@keyframes nr{40%{transform:translateX(4%)}}
+.art-like{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;color:var(--accent)}
+.art-like svg{width:26%;height:auto;filter:drop-shadow(0 .6vh 3vh rgba(0,0,0,.45))}
+.art-like.show{animation:likepop .8s ease}
+@keyframes likepop{0%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1.06)}65%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
 
-/* Gece: kırmızı ve loş, gözü yormaz */
-#idle[data-face="gece"] .f-sade{color:#ff3b30;opacity:.55}
-#idle[data-face="gece"] .date{color:#ff3b30}
-
-/* Kalın: dev rakamlar */
-.big{display:flex;gap:3vw;font-size:min(66vh,21vw);font-weight:800;line-height:.9;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
-.big span{background:linear-gradient(170deg,var(--k1),var(--k2));-webkit-background-clip:text;background-clip:text;color:transparent}
-#bigH{--k1:#ffd88a;--k2:#ff6a4d}
-#bigM{--k1:#ffffff;--k2:#9fb4ff}
+/* Gece modu: kırmızı ve loş */
+body.night #stage{filter:brightness(.62)}
+body.night #bg{opacity:.45}
+body.night .dial .face-bg{fill:rgba(255,69,58,.05)}
+body.night .dial .tk{stroke:rgba(255,69,58,.35)}
+body.night .dial .tk.h{stroke:#ff453a}
+body.night .dial .num{fill:rgba(255,69,58,.75)}
+body.night #hH,body.night #hM,body.night #hS{stroke:#ff453a}
+body.night .dial .pin{fill:#ff453a}
+body.night .adate .wd,body.night .adate .dm{color:#ff453a}
+body.night .idle-hint{color:rgba(255,69,58,.5)}
 
 /* Analog */
 .dial{height:min(86vh,58vw);width:auto;aspect-ratio:1/1;overflow:visible}
@@ -198,12 +205,6 @@ section{height:100%}
 .adate{text-align:left}
 .adate .wd{font-size:clamp(18px,7vh,36px);color:#ff9f0a;font-weight:700}
 .adate .dm{font-size:clamp(24px,13vh,64px);font-weight:700;letter-spacing:-.02em;line-height:1.05;margin-top:.5vh}
-
-/* Kelime */
-.words{display:flex;flex-direction:column;gap:.5vh;font-weight:700;letter-spacing:-.02em;line-height:1.02}
-.words .w0{font-size:clamp(18px,8vh,40px);color:var(--fg3)}
-.words .w1{font-size:min(17vh,9vw);color:var(--fg)}
-.words .w2{font-size:min(17vh,9vw);color:var(--fg2)}
 
 /* Kurulum */
 #setup{overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -263,11 +264,9 @@ section{height:100%}
   .info.has-shelf{height:auto}
   .info.has-shelf .meta{margin-top:2vh}
   .shelf,.info.has-next .shelf{--tile:min(calc((100cqw - 4 * var(--gap)) / 5), 8vh)}
-  #idle[data-face="analog"] .f-analog{flex-direction:column;gap:4vh}
+  .f-analog{flex-direction:column;gap:4vh}
   .dial{height:auto;width:min(80vw,50vh)}
   .adate{text-align:center}
-  .big{flex-direction:column;align-items:center;gap:0;font-size:min(30vh,44vw)}
-  .words .w1,.words .w2{font-size:12vw}
 }
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important}
@@ -296,7 +295,9 @@ section{height:100%}
   </section>
 
   <section id="player" hidden>
-    <div class="art-wrap"><img id="art" alt=""></div>
+    <div class="art-wrap" id="artWrap"><img id="art" alt="">
+      <div class="art-like" id="artLike"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M7.4 12.4l3.1 3 6.1-6.3" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>
     <div class="info" id="info">
       <div class="shelf" id="shelf" hidden></div>
       <div class="meta">
@@ -330,16 +331,8 @@ section{height:100%}
     </div>
   </section>
 
-  <section id="idle" data-face="sade" hidden>
-    <div class="face f-sade">
-      <div class="clock" id="clock">--:--</div>
-      <div class="date" id="date"></div>
-      <p class="idle-hint" id="idleHint">Spotify’da bir şey çaldığınızda burada görünecek.</p>
-    </div>
-    <div class="face f-kalin">
-      <div class="big"><span id="bigH">--</span><span id="bigM">--</span></div>
-    </div>
-    <div class="face f-analog">
+  <section id="idle" hidden>
+    <div class="f-analog">
       <svg class="dial" viewBox="0 0 200 200" aria-hidden="true">
         <circle class="face-bg" cx="100" cy="100" r="98"/>
         <g id="ticks"></g>
@@ -348,10 +341,7 @@ section{height:100%}
         <line id="hS" x1="100" y1="114" x2="100" y2="16"/>
         <circle class="pin" cx="100" cy="100" r="3.6"/>
       </svg>
-      <div class="adate"><div class="wd" id="aDay"></div><div class="dm" id="aDate"></div></div>
-    </div>
-    <div class="face f-kelime">
-      <div class="words"><div class="w0">Saat</div><div class="w1" id="w1"></div><div class="w2" id="w2"></div></div>
+      <div class="adate"><div class="wd" id="aDay"></div><div class="dm" id="aDate"></div><p class="idle-hint" id="idleHint">Spotify’da bir şey çaldığınızda burada görünecek.</p></div>
     </div>
   </section>
 </main>
@@ -362,10 +352,7 @@ section{height:100%}
 <div id="menu" hidden>
   <div class="menu-panel">
     <p id="wakeInfo"></p>
-    <p class="mlabel">Saat stili</p>
-    <div class="seg" id="faceSeg">
-      <button data-face="sade">Sade</button><button data-face="kalin">Kalın</button><button data-face="analog">Analog</button><button data-face="kelime">Kelime</button><button data-face="gece">Gece</button>
-    </div>
+    <button id="mNight">Gece modu (23:00–07:00): Açık</button>
     <button id="mUpnext">Sıradaki şarkıyı göster: Kapalı</button>
     <button id="mShelf">Mix rafı: Kapalı</button>
     <button id="mMixes">Mix’leri düzenle</button>
@@ -536,7 +523,7 @@ function api(path, opts){
 }
 
 /* ---------- Durum ---------- */
-var S = { itemId:null, isPlaying:false, progress:0, duration:0, at:0, lockUntil:0, deviceId:'', context:'', img:'', trackUri:'', liked:false };
+var S = { itemId:null, isPlaying:false, progress:0, duration:0, at:0, lockUntil:0, deviceId:'', context:'', img:'', trackUri:'', liked:false, devName:'', devType:'' };
 function nowProgress(){
   var p = S.isPlaying ? S.progress + (performance.now() - S.at) : S.progress;
   return Math.max(0, Math.min(p, S.duration || 0));
@@ -627,6 +614,27 @@ function setTrack(title, artist, img){
   else setTimeout(apply, 200);
 }
 
+// "- Remastered 2011", "- Stereo Mix" gibi ekleri at
+var SUFFIX = /\s*(?:\s-\s|\(|\[)\s*(?:\d{4}\s+)?(?:digital(?:ly)?\s+)?(?:remaster(?:ed)?|stereo|mono|single|album|radio\s+edit|original\s+mix)(?:\s+(?:version|mix|edit|remaster|\d{4}))*\s*[\)\]]?\s*$/i;
+function cleanTitle(t){
+  var p = t || '', n;
+  for (var i = 0; i < 3; i++) { n = p.replace(SUFFIX, ''); if (n === p || !n.trim()) break; p = n; }
+  return p;
+}
+function mixLabel(m){ return /^\d+$/.test(m.name) ? 'Mix ' + m.name : m.name; }
+// Saat satırı: çalan mix ve (telefon dışında çalıyorsa) cihaz adı
+function updateMetaLine(){
+  var parts = [];
+  if (S.context.indexOf('spotify:playlist:') === 0) {
+    var id = S.context.split(':')[2];
+    var m = mixes.filter(function(x){ return x.id === id; })[0];
+    if (m) parts.push(mixLabel(m));
+  }
+  if (S.devName && S.devType !== 'Smartphone') parts.push(S.devName);
+  $('device').textContent = parts.join(' – ');
+  $('devSep').hidden = !parts.length;
+}
+
 function applyState(j){
   if (!j || !j.item) { showIdle(j && j.device ? 'Spotify açık ama şu an bir şey çalmıyor.' : null); return; }
   var it = j.item, ep = it.type === 'episode';
@@ -643,12 +651,22 @@ function applyState(j){
   var changed = S.itemId !== id;
   var uri = (!it.is_local && it.uri) ? it.uri : '';
   if (uri !== S.trackUri) { S.trackUri = uri; checkLiked(); }
-  if (changed) { S.itemId = id; setTrack(it.name, artist, img); }
-  $('device').textContent = j.device && j.device.name ? j.device.name : '';
-  $('devSep').hidden = !$('device').textContent;
+  if (changed) { S.itemId = id; setTrack(cleanTitle(it.name), artist, img); }
   if (j.device && j.device.id) S.deviceId = j.device.id;
+  S.devName = j.device && j.device.name ? j.device.name : '';
+  S.devType = j.device && j.device.type ? j.device.type : '';
   var ctx = j.context && j.context.uri ? j.context.uri : '';
   if (ctx !== S.context) { S.context = ctx; markActiveMix(); }
+  updateMetaLine();
+  // 3 dakikadan uzun duraklatılırsa büyük saate geç, müzik başlayınca geri dön
+  if (S.isPlaying) {
+    pausedSince = 0;
+    if (clockMode && autoClock) exitClock();
+  } else if (!pausedSince) {
+    pausedSince = Date.now();
+  } else if (!clockMode && Date.now() - pausedSince > 180000) {
+    enterClock(true);
+  }
   if (clockMode) { $('idleHint').textContent = 'Müziğe dönmek için saate dokunun.'; show('idle'); }
   else show('player');
   maybeQueue(changed);
@@ -689,7 +707,7 @@ function setShowNext(v){
   if (v) maybeQueue(true); else setUpnextVisible(false);
 }
 function showIdle(hint){
-  S.itemId = null; clockMode = false;
+  S.itemId = null; clockMode = false; autoClock = false; pausedSince = 0;
   $('idleHint').textContent = hint || 'Spotify’da bir şey çaldığınızda burada görünecek.';
   show('idle');
 }
@@ -834,21 +852,21 @@ function playMix(m){
     if (!S.isPlaying) $('play').click(); else toast(m.name + ' zaten çalıyor');
     return;
   }
-  S.context = uri; markActiveMix();
-  toast(m.name + ' karışık başlıyor');
-  var dev = S.deviceId ? 'device_id=' + encodeURIComponent(S.deviceId) : '';
-  var playPath = '/me/player/play' + (dev ? '?' + dev : '');
+  S.context = uri; markActiveMix(); updateMetaLine();
+  toast(mixLabel(m) + ' başlıyor');
+  var dev = S.deviceId ? '?device_id=' + encodeURIComponent(S.deviceId) : '';
+  var playPath = '/me/player/play' + dev;
   S.lockUntil = 0;
-  // Karışık çalmayı aç, sonra listeyi rastgele bir şarkıdan, o şarkının başından başlat
-  api('/me/player/shuffle?state=true' + (dev ? '&' + dev : ''), { method:'PUT' }).catch(function(){}).then(function(){
-    var off = Math.floor(Math.random() * 20);
-    return api(playPath, { method:'PUT', body:JSON.stringify({ context_uri: uri, offset: { position: off }, position_ms: 0 }) });
-  }).then(function(r){
-    // Liste beklenenden kısaysa rastgele sıra geçersiz olabilir: karışık modda baştan dene
-    if (r && !r.ok && r.status !== 403 && r.status !== 429) {
-      return api(playPath, { method:'PUT', body:JSON.stringify({ context_uri: uri }) });
-    }
-    return r;
+  // Karıştırma ayarına dokunmadan listeyi rastgele bir şarkıdan, şarkının başından başlat
+  var start = function(maxOff){
+    var body = { context_uri: uri, position_ms: 0 };
+    if (maxOff) body.offset = { position: Math.floor(Math.random() * maxOff) };
+    return api(playPath, { method:'PUT', body:JSON.stringify(body) });
+  };
+  var retry = function(r){ return r && !r.ok && r.status !== 403 && r.status !== 429; };
+  start(20).then(function(r){
+    // Liste kısaysa önce daha dar bir aralık, olmazsa ilk şarkı
+    return retry(r) ? start(5).then(function(r2){ return retry(r2) ? start(0) : r2; }) : r;
   }).then(function(r){
     if (!r) return;
     if (r.status === 403) toast('Çalmayı kontrol etmek için Spotify Premium gerekiyor.', 'premium');
@@ -912,23 +930,6 @@ document.addEventListener('click', keepAwake);
 document.addEventListener('touchend', keepAwake, { passive:true });
 
 /* ---------- Saat ---------- */
-var FACES = [['sade','Sade'],['kalin','Kalın'],['analog','Analog'],['kelime','Kelime'],['gece','Gece']];
-var face = LS.get('face') || 'sade';
-if (!FACES.some(function(f){ return f[0] === face; })) face = 'sade';
-
-var NOM = ['on iki','bir','iki','üç','dört','beş','altı','yedi','sekiz','dokuz','on','on bir'];
-var ACC = ['on ikiyi','biri','ikiyi','üçü','dördü','beşi','altıyı','yediyi','sekizi','dokuzu','onu','on biri'];
-var DAT = ['on ikiye','bire','ikiye','üçe','dörde','beşe','altıya','yediye','sekize','dokuza','ona','on bire'];
-var MINW = { 5:'beş', 10:'on', 15:'çeyrek', 20:'yirmi', 25:'yirmi beş' };
-function timeWords(d){
-  var m = Math.round(d.getMinutes() / 5) * 5, h = d.getHours() % 12;
-  if (m === 60) { m = 0; h = (h + 1) % 12; }
-  if (m === 0) return [NOM[h], ''];
-  if (m === 30) return [NOM[h] + ' buçuk', ''];
-  if (m < 30) return [ACC[h] + ' ' + MINW[m], 'geçiyor'];
-  return [DAT[(h + 1) % 12] + ' ' + MINW[60 - m], 'var'];
-}
-
 function buildTicks(){
   var g = $('ticks'), ns = 'http://www.w3.org/2000/svg';
   for (var i = 0; i < 60; i++) {
@@ -947,65 +948,80 @@ function buildTicks(){
   }
 }
 
+var nightOn = LS.get('night') !== '0';
+function isNightHour(h){ return h >= 23 || h < 7; }
+function setNight(v){
+  nightOn = v; LS.set('night', v ? '1' : '0');
+  $('mNight').textContent = 'Gece modu (23:00–07:00): ' + (v ? 'Açık' : 'Kapalı');
+  updateClock();
+}
 function updateClock(){
   var d = new Date();
   var hh = String(d.getHours()).padStart(2,'0'), mm = String(d.getMinutes()).padStart(2,'0');
   $('miniClock').textContent = hh + ':' + mm;
-  if (face === 'sade' || face === 'gece') {
-    $('clock').textContent = hh + ':' + mm;
-    $('date').textContent = d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
-  } else if (face === 'kalin') {
-    $('bigH').textContent = hh; $('bigM').textContent = mm;
-  } else if (face === 'analog') {
-    var s = d.getSeconds(), m = d.getMinutes() + s / 60, h = (d.getHours() % 12) + m / 60;
-    $('hH').setAttribute('transform', 'rotate(' + (h * 30) + ' 100 100)');
-    $('hM').setAttribute('transform', 'rotate(' + (m * 6) + ' 100 100)');
-    $('hS').setAttribute('transform', 'rotate(' + (s * 6) + ' 100 100)');
-    $('aDay').textContent = d.toLocaleDateString('tr-TR', { weekday:'long' });
-    $('aDate').textContent = d.toLocaleDateString('tr-TR', { day:'numeric', month:'long' });
-  } else if (face === 'kelime') {
-    var w = timeWords(d);
-    $('w1').textContent = w[0]; $('w2').textContent = w[1];
-  }
+  var s = d.getSeconds(), m = d.getMinutes() + s / 60, h = (d.getHours() % 12) + m / 60;
+  $('hH').setAttribute('transform', 'rotate(' + (h * 30) + ' 100 100)');
+  $('hM').setAttribute('transform', 'rotate(' + (m * 6) + ' 100 100)');
+  $('hS').setAttribute('transform', 'rotate(' + (s * 6) + ' 100 100)');
+  $('aDay').textContent = d.toLocaleDateString('tr-TR', { weekday:'long' });
+  $('aDate').textContent = d.toLocaleDateString('tr-TR', { day:'numeric', month:'long' });
+  document.body.classList.toggle('night', nightOn && isNightHour(d.getHours()));
 }
 
-function setFace(f, announce){
-  face = f; LS.set('face', f);
-  $('idle').setAttribute('data-face', f);
-  var btns = $('faceSeg').querySelectorAll('button');
-  for (var i = 0; i < btns.length; i++) btns[i].setAttribute('aria-pressed', btns[i].getAttribute('data-face') === f ? 'true' : 'false');
-  updateClock();
-  if (announce) FACES.forEach(function(x){ if (x[0] === f) toast(x[1]); });
-}
-$('faceSeg').addEventListener('click', function(e){
-  var f = e.target.getAttribute('data-face'); if (f) setFace(f);
-});
 /* ---------- Saat modu: müzik çalarken büyük saate geçip geri dönme ---------- */
-var clockMode = false;
-function enterClock(){
-  clockMode = true;
+var clockMode = false, autoClock = false, pausedSince = 0;
+function enterClock(auto){
+  clockMode = true; autoClock = !!auto;
   $('idleHint').textContent = 'Müziğe dönmek için saate dokunun.';
   show('idle');
 }
 function exitClock(){
-  clockMode = false;
+  clockMode = false; autoClock = false;
   show('player');
   setBackground(S.img || '');
   extractAccent(S.img || '');
   maybeQueue(true);
   tick();
 }
-// Büyük saate dokununca: müzik varsa çalan ekranına dön, yoksa saat stilini değiştir
-$('idle').addEventListener('click', function(){
-  if (S.itemId) { exitClock(); return; }
-  var i = FACES.findIndex(function(x){ return x[0] === face; });
-  setFace(FACES[(i + 1) % FACES.length][0], true);
-});
-// Çalan ekranında boş bir yere ya da küçük saate dokununca büyük saate geç
+// Büyük saate dokununca müzik ekranına dön
+$('idle').addEventListener('click', function(){ if (S.itemId) exitClock(); });
+// Çalan ekranında boş bir yere dokununca büyük saate geç (kapağın kendi hareketleri var)
 $('player').addEventListener('click', function(e){
-  if (e.target.closest('button, .progress, .shelf')) return;
+  if (e.target.closest('button, .progress, .shelf, .art-wrap')) return;
   enterClock();
 });
+
+/* ---------- Kapak: kaydır = şarkı değiştir, çift dokun = beğen, tek dokun = saat ---------- */
+(function(){
+  var art = $('artWrap'), x0 = 0, y0 = 0, t0 = 0, swiped = false, lastTap = 0, tapTimer = null;
+  function nudgeArt(dir){
+    art.classList.remove('nl', 'nr'); void art.offsetWidth; art.classList.add(dir);
+  }
+  art.addEventListener('touchstart', function(e){
+    var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); swiped = false;
+  }, { passive:true });
+  art.addEventListener('touchend', function(e){
+    var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3 && Date.now() - t0 < 700) {
+      swiped = true;
+      if (dx < 0) { nudgeArt('nl'); $('next').click(); }
+      else { nudgeArt('nr'); $('prev').click(); }
+    }
+  }, { passive:true });
+  art.addEventListener('click', function(){
+    if (swiped) { swiped = false; return; }
+    var now = Date.now();
+    if (now - lastTap < 300) {
+      clearTimeout(tapTimer); lastTap = 0;
+      if (!S.trackUri) return;
+      var o = $('artLike'); o.classList.remove('show'); void o.offsetWidth; o.classList.add('show');
+      if (!S.liked) $('like').click();
+      return;
+    }
+    lastTap = now;
+    tapTimer = setTimeout(function(){ lastTap = 0; enterClock(); }, 300);
+  });
+})();
 
 /* ---------- Ekran izi koruması: arayüzü dakikada bir birkaç piksel kaydır ---------- */
 function nudge(){
@@ -1023,6 +1039,7 @@ $('mClose').addEventListener('click', function(){ $('menu').hidden = true; });
 $('menu').addEventListener('click', function(e){ if (e.target === $('menu')) $('menu').hidden = true; });
 $('mRefresh').addEventListener('click', function(){ $('menu').hidden = true; poll(); });
 $('mUpnext').addEventListener('click', function(){ setShowNext(!showNext); });
+$('mNight').addEventListener('click', function(){ setNight(!nightOn); });
 $('mShelf').addEventListener('click', function(){ setShelf(!shelfOn); });
 $('mMixes').addEventListener('click', function(){ $('menu').hidden = true; openMixSheet(); });
 $('mLogout').addEventListener('click', function(){ $('menu').hidden = true; logout('Spotify bağlantısı kesildi.'); });
@@ -1061,7 +1078,7 @@ function init(){
   var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   $('pwaTip').hidden = !!standalone;
   buildTicks();
-  setFace(face);
+  setNight(nightOn);
   $('mUpnext').textContent = 'Sıradaki şarkıyı göster: ' + (showNext ? 'Açık' : 'Kapalı');
   setShelf(shelfOn);
   setInterval(updateClock, 1000);

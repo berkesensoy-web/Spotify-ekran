@@ -159,9 +159,19 @@ section{height:100%}
 /* Mix düzenleme penceresi */
 .sheet-help{font-size:13px}
 .mix-row{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
-.mix-row i{flex:none;width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.mix-row i{flex:none;width:30px;height:30px;border-radius:6px;background:rgba(255,255,255,.12) center/cover;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
 .mix-row span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
-.menu-panel .mix-row button{width:auto;border:0;padding:6px 8px;font-size:14px;font-weight:500;color:#ff6961}
+.menu-panel .mix-row button{width:auto;border:0;padding:6px 8px;font-size:14px;font-weight:500;color:var(--fg)}
+.menu-panel .mix-row .mv{color:var(--fg2);font-size:16px;padding:6px 7px}
+.menu-panel .mix-row .mv[disabled]{visibility:hidden}
+.mix-edit{display:grid;gap:8px;padding:10px 16px 12px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)}
+.mix-edit input{width:100%;font:15px -apple-system,BlinkMacSystemFont,sans-serif;color:var(--fg);background:var(--glass);
+  border:1px solid var(--fg3);border-radius:10px;padding:10px 12px;-webkit-user-select:text;user-select:text}
+.mix-edit input:focus{outline:none;border-color:var(--fg2)}
+.mix-edit .btns{display:flex;gap:8px}
+.menu-panel .mix-edit .btns button{flex:1;border:0;text-align:center;border-radius:10px;padding:9px;font-size:14px;font-weight:600;background:var(--glass)}
+.menu-panel .mix-edit .btns .ok{background:#fff;color:#000}
+.menu-panel .mix-edit .btns .del{color:#ff6961}
 .mix-add{display:grid;gap:8px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
 .mix-add input{width:100%;font:15px -apple-system,BlinkMacSystemFont,sans-serif;color:var(--fg);background:var(--glass);
   border:1px solid var(--fg3);border-radius:10px;padding:10px 12px;-webkit-user-select:text;user-select:text}
@@ -908,19 +918,61 @@ function setShelf(v){
   renderShelf();
 }
 
+var editing = -1;
+function el(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+// Adlar sadece numaraysa (01, 02…) sıra değişince yeniden numarala
+function renumber(){
+  if (!mixes.every(function(m){ return /^\d+$/.test(m.name); })) return;
+  mixes.forEach(function(m, i){ m.name = String(i + 1).padStart(2, '0'); });
+}
+function forgetMix(id){
+  delete mixArt[id]; LS.set('mixart', JSON.stringify(mixArt));
+  var b = loadBounds(); delete b[id]; LS.set('mixbounds', JSON.stringify(b));
+}
+function commitMixes(){ saveMixes(); renderMixList(); renderShelf(); updateMetaLine(); }
+function moveMix(i, d){
+  var k = i + d; if (k < 0 || k >= mixes.length) return;
+  var t = mixes[i]; mixes[i] = mixes[k]; mixes[k] = t;
+  renumber(); commitMixes();
+}
 function renderMixList(){
   var list = $('mixList'); list.textContent = '';
   mixes.forEach(function(m, i){
-    var row = document.createElement('div'); row.className = 'mix-row';
-    var sw = document.createElement('i');
-    var nm = document.createElement('span'); nm.textContent = m.name;
-    var del = document.createElement('button'); del.textContent = 'Sil';
-    del.addEventListener('click', function(){ delete mixArt[m.id]; LS.set('mixart', JSON.stringify(mixArt)); mixes.splice(i, 1); saveMixes(); renderMixList(); renderShelf(); });
-    row.appendChild(sw); row.appendChild(nm); row.appendChild(del);
+    var row = el('div', 'mix-row');
+    var th = el('i'); if (mixArt[m.id]) th.style.backgroundImage = 'url("' + mixArt[m.id] + '")';
+    var up = el('button', 'mv', '↑'), dn = el('button', 'mv', '↓');
+    up.setAttribute('aria-label', 'Yukarı taşı'); dn.setAttribute('aria-label', 'Aşağı taşı');
+    up.disabled = i === 0; dn.disabled = i === mixes.length - 1;
+    up.addEventListener('click', function(){ moveMix(i, -1); });
+    dn.addEventListener('click', function(){ moveMix(i, 1); });
+    var ed = el('button', '', editing === i ? 'Kapat' : 'Düzenle');
+    ed.addEventListener('click', function(){ editing = editing === i ? -1 : i; renderMixList(); });
+    row.appendChild(th); row.appendChild(el('span', '', m.name));
+    row.appendChild(up); row.appendChild(dn); row.appendChild(ed);
     list.appendChild(row);
+    if (editing !== i) return;
+
+    var box = el('div', 'mix-edit');
+    var nameIn = el('input'); nameIn.value = m.name; nameIn.placeholder = 'Ad';
+    var urlIn = el('input'); urlIn.value = 'https://open.spotify.com/playlist/' + m.id;
+    urlIn.placeholder = 'Çalma listesi bağlantısı';
+    urlIn.setAttribute('autocapitalize', 'off'); urlIn.setAttribute('autocorrect', 'off'); urlIn.spellcheck = false;
+    var btns = el('div', 'btns'), del = el('button', 'del', 'Sil'), ok = el('button', 'ok', 'Kaydet');
+    del.addEventListener('click', function(){ forgetMix(m.id); mixes.splice(i, 1); editing = -1; renumber(); commitMixes(); });
+    ok.addEventListener('click', function(){
+      var id = playlistId(urlIn.value);
+      if (!id) { toast('Bu bir Spotify çalma listesi bağlantısı değil.'); return; }
+      if (id !== m.id && mixes.some(function(x){ return x.id === id; })) { toast('Bu liste zaten ekli.'); return; }
+      if (id !== m.id) { forgetMix(m.id); m.id = id; }
+      m.name = nameIn.value.trim() || m.name;
+      editing = -1; commitMixes(); toast(m.name + ' güncellendi');
+    });
+    btns.appendChild(del); btns.appendChild(ok);
+    box.appendChild(nameIn); box.appendChild(urlIn); box.appendChild(btns);
+    list.appendChild(box);
   });
 }
-function openMixSheet(){ renderMixList(); $('mixSheet').hidden = false; }
+function openMixSheet(){ editing = -1; renderMixList(); $('mixSheet').hidden = false; }
 $('mixClose').addEventListener('click', function(){ $('mixSheet').hidden = true; });
 $('mixSheet').addEventListener('click', function(e){ if (e.target === $('mixSheet')) $('mixSheet').hidden = true; });
 $('mixAddBtn').addEventListener('click', function(){

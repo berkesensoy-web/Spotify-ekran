@@ -107,6 +107,11 @@ section{height:100%}
 
 /* Beğen düğmesi */
 .titlerow{display:flex;align-items:center;gap:clamp(10px,2.4vw,22px)}
+.actions{flex:none;display:flex;align-items:center;gap:clamp(8px,2.2vh,14px)}
+#hide{flex:none;width:clamp(26px,7.5vh,36px);height:clamp(26px,7.5vh,36px);display:grid;place-items:center;
+  border-radius:50%;color:var(--fg2);transition:transform .15s ease}
+#hide:active{transform:scale(.85)}
+#hide svg{width:100%;height:100%;display:block}
 .tt{flex:1;min-width:0}
 #like{flex:none;width:clamp(26px,7.5vh,36px);height:clamp(26px,7.5vh,36px);display:grid;place-items:center;
   border-radius:50%;color:var(--fg2);transition:transform .15s ease,color .4s ease}
@@ -319,12 +324,17 @@ body.night .idle-hint{color:rgba(255,69,58,.5)}
       <div class="upnext" id="upnext" hidden><img id="nextArt" alt=""><span><b>Sıradaki</b><span id="nextText"></span></span></div>
       <div class="titlerow">
         <div class="tt"><h1 id="title"></h1><p id="artist"></p></div>
+        <div class="actions">
+        <button id="hide" aria-label="Bu şarkıyı gizle" hidden>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.6 12h8.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
         <button id="like" aria-label="Beğenilen Şarkılar’a ekle" hidden>
           <svg viewBox="0 0 24 24">
             <g class="l-off"><circle cx="12" cy="12" r="10.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.6v8.8M7.6 12h8.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></g>
             <g class="l-on"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M7.4 12.4l3.1 3 6.1-6.3" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>
           </svg>
         </button>
+        </div>
       </div>
       <div class="progress" id="progress" role="slider" aria-label="Şarkıda ilerle">
         <div class="track"><div class="fill" id="fill"></div></div>
@@ -370,6 +380,7 @@ body.night .idle-hint{color:rgba(255,69,58,.5)}
     <button id="mUpnext">Sıradaki şarkıyı göster: Kapalı</button>
     <button id="mShelf">Mix rafı: Kapalı</button>
     <button id="mMixes">Mix’leri düzenle</button>
+    <button id="mHidden">Gizlenen şarkıları geri al</button>
     <button id="mRefresh">Yenile</button>
     <button id="mLogout" class="danger">Spotify bağlantısını kes</button>
     <button id="mClose">Kapat</button>
@@ -665,7 +676,7 @@ function applyState(j){
   var id = it.id || it.uri || it.name;
   var changed = S.itemId !== id;
   var uri = (!it.is_local && it.uri) ? it.uri : '';
-  if (uri !== S.trackUri) { S.trackUri = uri; checkLiked(); }
+  if (uri !== S.trackUri) { S.trackUri = uri; checkLiked(); $('hide').hidden = !uri; skipIfHidden(uri, !!j.is_playing); }
   if (changed) { S.itemId = id; setTrack(cleanTitle(it.name), artist, img); }
   if (j.device && j.device.id) S.deviceId = j.device.id;
   S.devName = j.device && j.device.name ? j.device.name : '';
@@ -795,6 +806,24 @@ function setLiked(v, animate){
 function needReconnect(){
   toast('Beğenme için yeni izin gerekiyor: menüden “Spotify bağlantısını kes”e basıp tekrar bağlanın.', 'scope');
 }
+/* ---------- Gizlenen şarkılar: bu uygulamada çalınca otomatik atlanır ---------- */
+var hiddenTracks = (function(){ try { var a = JSON.parse(LS.get('hidden') || '[]'); return Array.isArray(a) ? a : []; } catch(e){ return []; } })();
+var lastSkipped = '';
+function saveHidden(){ LS.set('hidden', JSON.stringify(hiddenTracks.slice(-500))); }
+function skipIfHidden(uri, playing){
+  if (!uri || !playing || hiddenTracks.indexOf(uri) < 0 || lastSkipped === uri) return;
+  lastSkipped = uri;
+  toast('Gizlediğiniz şarkı atlandı');
+  control('POST', '/me/player/next');
+}
+$('hide').addEventListener('click', function(){
+  var uri = S.trackUri; if (!uri) return;
+  if (hiddenTracks.indexOf(uri) < 0) { hiddenTracks.push(uri); saveHidden(); }
+  lastSkipped = uri;
+  toast('Şarkı gizlendi, bu ekranda bir daha çalmayacak');
+  S.lockUntil = 0; control('POST', '/me/player/next');
+});
+
 function checkLiked(){
   var uri = S.trackUri;
   $('like').hidden = !uri;
@@ -1110,7 +1139,13 @@ function nudge(){
 }
 
 /* ---------- Menü ---------- */
+$('mHidden').addEventListener('click', function(){
+  if (!hiddenTracks.length) { toast('Gizlenmiş şarkı yok'); return; }
+  var n = hiddenTracks.length; hiddenTracks = []; saveHidden();
+  $('menu').hidden = true; toast(n + ' şarkı geri alındı');
+});
 $('menuBtn').addEventListener('click', function(){
+  $('mHidden').textContent = 'Gizlenen şarkıları geri al (' + hiddenTracks.length + ')';
   $('wakeInfo').textContent = 'Ekranı açık tutma: ' + wakeState +
     (wakeState === 'açık' ? '' : '. Kapanırsa Rehberli Erişim’deki “Ekran Otomatik Kilidi: Asla” ayarını kullanın.');
   $('menu').hidden = false;
